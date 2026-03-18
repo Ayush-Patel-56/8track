@@ -2,8 +2,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../store/authStore';
 import { Link } from 'react-router-dom';
 import api from '../lib/api';
-import { format } from 'date-fns';
-import { Plus, Calendar, ArrowRight } from 'lucide-react';
+import { format, isToday, isFuture, parseISO, differenceInDays, differenceInHours } from 'date-fns';
+import { Plus, Calendar, ArrowRight, Loader2 } from 'lucide-react';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function getGreeting() {
@@ -11,6 +11,22 @@ function getGreeting() {
     if (h < 12) return 'Good morning';
     if (h < 17) return 'Good afternoon';
     return 'Good evening';
+}
+
+function formatCountdown(date) {
+    const now = new Date();
+    const target = new Date(date);
+    const days = differenceInDays(target, now);
+    const hours = differenceInHours(target, now) % 24;
+    
+    if (days < 0) return 'Passed';
+    if (days === 0 && hours === 0) return 'Now';
+    
+    let parts = [];
+    if (days > 0) parts.push(`${days}d`);
+    if (hours > 0) parts.push(`${hours}h`);
+    
+    return parts.join(' ') || '< 1h';
 }
 
 const STATUS_STYLE = {
@@ -179,11 +195,36 @@ export default function DashboardPage() {
         retry: 1,
     });
 
+    const { data: assignments = [] } = useQuery({
+        queryKey: ['assignments'],
+        queryFn: () => api.get('/assignments').then(r => r.data.assignments || r.data),
+    });
+
+    const { data: tasks = [] } = useQuery({
+        queryKey: ['tasks'],
+        queryFn: () => api.get('/tasks').then(r => r.data.tasks || r.data),
+    });
+
     const markMutation = useMutation({
         mutationFn: ({ subjectId, status }) =>
             api.post('/attendance/mark', { subjectId, status, date: new Date().toISOString() }),
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ['subjects'] }),
     });
+
+    // Calculations
+    const pendingCount = [...assignments, ...tasks].filter(t => {
+        const isComp = t.status === 'completed' || t.completed === true;
+        return !isComp;
+    }).length;
+
+    // Find Next Exam (Assignment with "Exam" or "Test" in title, or look for upcoming assignment)
+    const nextExam = [...assignments]
+        .filter(t => {
+            const isActive = t.status !== 'completed' && !t.completed;
+            const isExam = t.title?.toLowerCase().includes('exam') || t.title?.toLowerCase().includes('test');
+            return isActive && isExam && t.dueDate && isFuture(parseISO(t.dueDate));
+        })
+        .sort((a, b) => parseISO(a.dueDate) - parseISO(b.dueDate))[0];
 
     const avgPct = subjects.length
         ? Math.round(subjects.reduce((s, sub) => s + (sub.percentage || 0), 0) / subjects.length)
@@ -243,16 +284,16 @@ export default function DashboardPage() {
                     sub="Subjects below threshold"
                 />
                 <StatCard
-                    label="Due Today"
-                    value="3"
+                    label="Active Tasks"
+                    value={pendingCount}
                     accent="var(--primary-accent)"
                     sub="Tasks & Assignments"
                 />
                 <StatCard
                     label="Next Exam"
-                    value="2d 14h"
+                    value={nextExam ? formatCountdown(nextExam.dueDate) : '—'}
                     accent="var(--secondary-accent)"
-                    sub="Applied Physics II"
+                    sub={nextExam ? nextExam.title : 'No upcoming exams'}
                 />
             </div>
 

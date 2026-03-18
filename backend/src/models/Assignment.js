@@ -8,8 +8,13 @@ const AssignmentSchema = new mongoose.Schema(
         dueDate: { type: Date, required: true },
         status: {
             type: String,
-            enum: ['pending', 'completed', 'overdue'],
+            enum: ['pending', 'in-progress', 'completed', 'overdue'],
             default: 'pending',
+        },
+        priority: {
+            type: String,
+            enum: ['low', 'medium', 'high'],
+            default: 'medium',
         },
     },
     { timestamps: true }

@@ -16,10 +16,17 @@ const getAssignments = async (req, res) => {
 };
 
 const createAssignment = async (req, res) => {
-    const { title, subjectId, dueDate } = req.body;
+    const { title, subjectId, dueDate, priority, status } = req.body;
     if (!title || !dueDate) return res.status(400).json({ message: 'Title and due date are required' });
     try {
-        const assignment = await Assignment.create({ userId: req.user.id, subjectId, title, dueDate });
+        const assignment = await Assignment.create({ 
+            userId: req.user.id, 
+            subjectId, 
+            title, 
+            dueDate,
+            priority: priority || 'medium',
+            status: status || 'pending'
+        });
         res.status(201).json({ assignment });
     } catch {
         res.status(500).json({ message: 'Failed to create assignment' });
