@@ -99,4 +99,13 @@ const deleteAttendance = async (req, res) => {
     }
 };
 
-module.exports = { markAttendance, getAttendanceHistory, updateAttendance, deleteAttendance };
+const getGlobalAttendance = async (req, res) => {
+    try {
+        const history = await Attendance.find({ userId: req.user.id }).sort({ date: -1 });
+        res.json({ history });
+    } catch {
+        res.status(500).json({ message: 'Failed to fetch overall attendance history' });
+    }
+};
+
+module.exports = { markAttendance, getAttendanceHistory, updateAttendance, deleteAttendance, getGlobalAttendance };

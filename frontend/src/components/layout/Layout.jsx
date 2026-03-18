@@ -8,6 +8,7 @@ import FocusPage from '../../pages/FocusPage';
 import AttendancePage from '../../pages/AttendancePage';
 import AttendanceSummaryPage from '../../pages/AttendanceSummaryPage';
 import AssignmentsPage from '../../pages/AssignmentsPage';
+import ProgressPage from '../../pages/ProgressPage';
 import { Plus } from 'lucide-react';
 
 // Stub pages (filled in later phases)
@@ -47,7 +48,7 @@ export default function Layout() {
                         <Route path="attendance/:id" element={<AttendancePage />} />
                         <Route path="assignments" element={<AssignmentsPage />} />
                         <Route path="exams" element={<ExamsPage />} />
-                        <Route path="progress" element={<ComingSoon name="My Progress" phase="6" />} />
+                        <Route path="progress" element={<ProgressPage />} />
                         <Route path="focus" element={<FocusPage />} />
                         <Route path="subjects" element={<SubjectsPage />} />
                     </Routes>
