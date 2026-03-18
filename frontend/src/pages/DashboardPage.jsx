@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../store/authStore';
+import { Link } from 'react-router-dom';
 import api from '../lib/api';
 import { format } from 'date-fns';
 import { Plus, Calendar, ArrowRight } from 'lucide-react';
@@ -123,10 +124,10 @@ function SubjectRow({ subject, color, onMark }) {
     return (
         <tr className="border-b border-[var(--active-highlight)] last:border-0 hover:bg-[rgba(255,255,255,0.02)] transition-colors group">
             <td className="py-5 pr-4 pl-2">
-                <div className="flex items-center gap-3">
+                <Link to={`/attendance/${subject._id}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
                     <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color, boxShadow: `0 0 8px ${color}` }} />
                     <span className="text-[14px] font-bold text-white tracking-tight">{subject.name}</span>
-                </div>
+                </Link>
             </td>
             <td className="py-5 pr-8" style={{ minWidth: 180 }}>
                 <div className="flex items-center gap-4">
@@ -261,9 +262,9 @@ export default function DashboardPage() {
                     style={{ background: 'var(--card-bg)' }}>
                     <div className="flex items-center justify-between mb-8">
                         <h2 className="text-lg font-bold text-white tracking-tight">Subject Attendance</h2>
-                        <button className="flex items-center gap-2 text-xs font-black tracking-widest uppercase text-[var(--primary-accent)] hover:underline">
+                        <Link to="/attendance" className="flex items-center gap-2 text-xs font-black tracking-widest uppercase text-[var(--primary-accent)] hover:underline">
                             View All <ArrowRight className="w-3 h-3" />
-                        </button>
+                        </Link>
                     </div>
 
                     {isLoading ? (
