@@ -11,6 +11,7 @@ const assignmentRoutes = require("./routes/assignment.routes");
 const taskRoutes = require("./routes/task.routes");
 const examRoutes = require("./routes/exam.routes");
 const pushRoutes = require("./routes/push.routes");
+const scheduleRoutes = require("./routes/schedule.routes");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -34,6 +35,7 @@ app.use("/api/assignments", assignmentRoutes);
 app.use("/api/tasks", taskRoutes);
 app.use("/api/exams", examRoutes);
 app.use("/api/push", pushRoutes);
+app.use("/api/schedule", scheduleRoutes);
 
 // Health check
 app.get("/api/health", (req, res) => {

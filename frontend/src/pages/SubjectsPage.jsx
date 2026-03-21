@@ -1,16 +1,229 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { BookOpen, Plus, MoreHorizontal, CheckCircle2, AlertCircle, XCircle, Trash2, Edit2, X } from 'lucide-react';
+import { BookOpen, Plus, MoreHorizontal, CheckCircle2, AlertCircle, XCircle, Trash2, Edit2, X, CalendarX, Clock } from 'lucide-react';
 import api from '../lib/api';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const SUBJECT_COLORS = ['#3b82f6', '#f97316', '#ef4444', '#8b5cf6', '#22c55e', '#ec4899', '#06b6d4'];
+const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const DAY_SHORT = { Monday: 'Mon', Tuesday: 'Tue', Wednesday: 'Wed', Thursday: 'Thu', Friday: 'Fri', Saturday: 'Sat', Sunday: 'Sun' };
+const SLOT_COLORS = ['#3b82f6', '#f97316', '#ef4444', '#8b5cf6', '#22c55e', '#ec4899', '#06b6d4', '#3ABFBF'];
+
+function getSlotColor(name) {
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    return SLOT_COLORS[Math.abs(hash) % SLOT_COLORS.length];
+}
 
 const STATUS_STYLE = {
     safe: { label: 'SAFE', color: '#3b82f6', bg: '#3b82f620', icon: CheckCircle2 },
     warning: { label: 'WARNING', color: '#f97316', bg: '#f9731620', icon: AlertCircle },
     danger: { label: 'DANGER', color: '#ef4444', bg: '#ef444420', icon: XCircle },
 };
+
+// ─── Weekly Schedule Component ────────────────────────────────────────────────
+function WeeklySchedule() {
+    const queryClient = useQueryClient();
+    const [addingDay, setAddingDay] = useState(null); // day name for the inline add form
+    const [form, setForm] = useState({ subjectName: '', startTime: '', endTime: '', room: '' });
+
+    const { data, isLoading } = useQuery({
+        queryKey: ['schedule'],
+        queryFn: () => api.get('/schedule').then(r => r.data.schedule),
+    });
+
+    const addSlotMutation = useMutation({
+        mutationFn: ({ day, slot }) => api.post(`/schedule/${day}/slots`, slot),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['schedule'] });
+            setAddingDay(null);
+            setForm({ subjectName: '', startTime: '', endTime: '', room: '' });
+        },
+    });
+
+    const deleteSlotMutation = useMutation({
+        mutationFn: ({ day, slotId }) => api.delete(`/schedule/${day}/slots/${slotId}`),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['schedule'] }),
+    });
+
+    const toggleHolidayMutation = useMutation({
+        mutationFn: ({ day, isHoliday }) => api.patch(`/schedule/${day}/holiday`, { isHoliday }),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['schedule'] }),
+    });
+
+    const handleAddSlot = (e, day) => {
+        e.preventDefault();
+        if (!form.subjectName || !form.startTime || !form.endTime) return;
+        addSlotMutation.mutate({ day, slot: form });
+    };
+
+    const schedule = data || [];
+
+    return (
+        <div className="mt-10">
+            {/* Section Header */}
+            <div className="mb-6">
+                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                    <Clock className="w-6 h-6" style={{ color: 'hsl(43 96% 56%)' }} />
+                    Set Weekly Schedule
+                </h2>
+                <p className="text-sm mt-1" style={{ color: 'hsl(240 5% 50%)' }}>
+                    Define your recurring class timetable for each day of the week.
+                </p>
+            </div>
+
+            {isLoading ? (
+                <div className="py-10 text-center animate-pulse" style={{ color: 'hsl(240 5% 50%)' }}>Loading schedule...</div>
+            ) : (
+                <div className="grid grid-cols-7 gap-3">
+                    {DAYS.map(day => {
+                        const dayData = schedule.find(d => d.day === day) || { day, isHoliday: false, slots: [] };
+                        const isHoliday = dayData.isHoliday;
+
+                        return (
+                            <div
+                                key={day}
+                                className="rounded-2xl overflow-hidden flex flex-col min-h-[260px]"
+                                style={{
+                                    background: isHoliday ? 'hsl(240 8% 8%)' : 'hsl(240 10% 9%)',
+                                    border: `1px solid ${isHoliday ? 'hsl(0 60% 25%)' : 'hsl(240 6% 15%)'}`,
+                                    opacity: isHoliday ? 0.7 : 1,
+                                }}
+                            >
+                                {/* Day Header */}
+                                <div
+                                    className="px-3 py-2.5 flex items-center justify-between"
+                                    style={{ background: isHoliday ? 'rgba(232,92,92,0.12)' : 'hsl(240 6% 12%)' }}
+                                >
+                                    <span className="text-[13px] font-black tracking-widest uppercase" style={{ color: isHoliday ? '#E85C5C' : 'white' }}>
+                                        {DAY_SHORT[day]}
+                                    </span>
+                                    <button
+                                        onClick={() => toggleHolidayMutation.mutate({ day, isHoliday: !isHoliday })}
+                                        title={isHoliday ? 'Unmark holiday' : 'Mark as holiday'}
+                                        className="p-1 rounded-md transition-colors hover:bg-white/10"
+                                        style={{ color: isHoliday ? '#E85C5C' : 'hsl(240 5% 45%)' }}
+                                    >
+                                        <CalendarX className="w-3.5 h-3.5" />
+                                    </button>
+                                </div>
+
+                                {/* Slots List */}
+                                <div className="flex flex-col gap-2 p-2 flex-1">
+                                    {isHoliday ? (
+                                        <div className="flex-1 flex flex-col items-center justify-center gap-1 py-4">
+                                            <CalendarX className="w-5 h-5" style={{ color: '#E85C5C' }} />
+                                            <span className="text-[10px] font-bold text-center uppercase tracking-wider" style={{ color: 'hsl(0 60% 55%)' }}>Holiday</span>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            {dayData.slots.length === 0 && addingDay !== day && (
+                                                <div className="flex-1 flex items-center justify-center">
+                                                    <span className="text-[11px] font-medium" style={{ color: 'hsl(240 5% 35%)' }}>No classes</span>
+                                                </div>
+                                            )}
+
+                                            {dayData.slots.map(slot => {
+                                                const color = getSlotColor(slot.subjectName);
+                                                return (
+                                                    <div
+                                                        key={slot._id}
+                                                        className="relative rounded-xl p-2.5 group"
+                                                        style={{ background: `${color}14`, border: `1px solid ${color}30` }}
+                                                    >
+                                                        <button
+                                                            onClick={() => deleteSlotMutation.mutate({ day, slotId: slot._id })}
+                                                            className="absolute top-1 right-1 p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/20"
+                                                            style={{ color: '#E85C5C' }}
+                                                        >
+                                                            <X className="w-3 h-3" />
+                                                        </button>
+                                                        <p className="text-[12px] font-bold leading-tight pr-4 truncate" style={{ color }}>{slot.subjectName}</p>
+                                                        <p className="text-[10px] font-semibold mt-1" style={{ color: 'hsl(240 5% 55%)' }}>{slot.startTime} – {slot.endTime}</p>
+                                                        {slot.room && <p className="text-[9px] font-medium mt-0.5 truncate" style={{ color: 'hsl(240 5% 45%)' }}>{slot.room}</p>}
+                                                    </div>
+                                                );
+                                            })}
+
+                                            {/* Inline Add Form */}
+                                            {addingDay === day ? (
+                                                <form onSubmit={(e) => handleAddSlot(e, day)} className="space-y-1.5 mt-1 p-2 rounded-xl" style={{ background: 'hsl(240 6% 12%)', border: '1px solid hsl(240 6% 20%)' }}>
+                                                    <input
+                                                        autoFocus
+                                                        placeholder="Subject name*"
+                                                        value={form.subjectName}
+                                                        onChange={e => setForm({ ...form, subjectName: e.target.value })}
+                                                        required
+                                                        className="w-full px-2 py-1.5 rounded-lg text-[11px] font-bold bg-black/30 border text-white focus:outline-none"
+                                                        style={{ borderColor: 'hsl(240 6% 20%)' }}
+                                                        onFocus={e => e.target.style.borderColor = 'hsl(43 96% 56%)'}
+                                                        onBlur={e => e.target.style.borderColor = 'hsl(240 6% 20%)'}
+                                                    />
+                                                    <div className="flex flex-col gap-1.5">
+                                                        <input
+                                                            type="time"
+                                                            required
+                                                            value={form.startTime}
+                                                            onChange={e => setForm({ ...form, startTime: e.target.value })}
+                                                            className="w-full px-2 py-1.5 rounded-lg text-[11px] font-bold bg-black/30 border text-white focus:outline-none"
+                                                            style={{ borderColor: 'hsl(240 6% 20%)', colorScheme: 'dark' }}
+                                                        />
+                                                        <input
+                                                            type="time"
+                                                            required
+                                                            value={form.endTime}
+                                                            onChange={e => setForm({ ...form, endTime: e.target.value })}
+                                                            className="w-full px-2 py-1.5 rounded-lg text-[11px] font-bold bg-black/30 border text-white focus:outline-none"
+                                                            style={{ borderColor: 'hsl(240 6% 20%)', colorScheme: 'dark' }}
+                                                        />
+                                                    </div>
+                                                    <input
+                                                        placeholder="Room (optional)"
+                                                        value={form.room}
+                                                        onChange={e => setForm({ ...form, room: e.target.value })}
+                                                        className="w-full px-2 py-1.5 rounded-lg text-[11px] font-medium bg-black/30 border text-white focus:outline-none"
+                                                        style={{ borderColor: 'hsl(240 6% 20%)' }}
+                                                    />
+                                                    <div className="flex gap-1 pt-0.5">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => { setAddingDay(null); setForm({ subjectName: '', startTime: '', endTime: '', room: '' }); }}
+                                                            className="flex-1 py-1.5 rounded-lg text-[10px] font-bold transition-colors hover:bg-white/5"
+                                                            style={{ color: 'hsl(240 5% 50%)' }}
+                                                        >
+                                                            Cancel
+                                                        </button>
+                                                        <button
+                                                            type="submit"
+                                                            disabled={addSlotMutation.isPending}
+                                                            className="flex-1 py-1.5 rounded-lg text-[10px] font-black transition-all active:scale-95 disabled:opacity-50"
+                                                            style={{ background: 'hsl(43 96% 56%)', color: 'hsl(240 5.9% 10%)' }}
+                                                        >
+                                                            Add
+                                                        </button>
+                                                    </div>
+                                                </form>
+                                            ) : (
+                                                <button
+                                                    onClick={() => setAddingDay(day)}
+                                                    className="w-full mt-auto py-2 rounded-xl flex items-center justify-center gap-1 transition-colors hover:bg-white/5 border border-dashed"
+                                                    style={{ borderColor: 'hsl(240 6% 20%)', color: 'hsl(240 5% 40%)' }}
+                                                >
+                                                    <Plus className="w-3.5 h-3.5" />
+                                                    <span className="text-[11px] font-bold">Add</span>
+                                                </button>
+                                            )}
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+}
 
 // ─── Subjects Page ───────────────────────────────────────────────────────────
 export default function SubjectsPage() {
@@ -83,7 +296,7 @@ export default function SubjectsPage() {
     };
 
     return (
-        <div className="space-y-6 max-w-5xl">
+        <div className="space-y-6 max-w-6xl">
             {/* ── Header ── */}
             <div className="flex items-center justify-between">
                 <div>
@@ -170,7 +383,6 @@ export default function SubjectsPage() {
                                     </div>
                                 </div>
 
-                                
                                 <div className="flex items-center justify-between mt-auto pt-2">
                                     {/* Status Badge */}
                                     <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md"
@@ -178,7 +390,7 @@ export default function SubjectsPage() {
                                         <StatusIcon className="w-3.5 h-3.5" />
                                         <span className="text-xs font-bold">{st.label}</span>
                                     </div>
-                                    
+
                                     {/* Target Check */}
                                     {sub.totalExpectedClasses > 0 && (
                                         <div className="text-xs font-medium" style={{ color: 'hsl(240 5% 50%)' }}>
@@ -192,12 +404,15 @@ export default function SubjectsPage() {
                 </div>
             )}
 
+            {/* ── Weekly Schedule Section ── */}
+            <WeeklySchedule />
+
             {/* ── Modal ── */}
             {isAddModalOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
                     <div className="w-full max-w-md rounded-2xl shadow-2xl overflow-hidden"
                         style={{ background: 'hsl(240 10% 9%)', border: '1px solid hsl(240 6% 15%)' }}>
-                        
+
                         <div className="flex items-center justify-between p-5 border-b" style={{ borderColor: 'hsl(240 6% 15%)' }}>
                             <h3 className="text-lg font-bold text-white">
                                 {editingSubject ? 'Edit Subject' : 'Add New Subject'}

@@ -1,0 +1,24 @@
+const mongoose = require('mongoose');
+
+const SlotSchema = new mongoose.Schema({
+    subjectName: { type: String, required: true, trim: true },
+    startTime: { type: String, required: true },   // e.g. "09:00"
+    endTime: { type: String, required: true },     // e.g. "10:00"
+    room: { type: String, trim: true, default: '' },
+});
+
+const DayScheduleSchema = new mongoose.Schema({
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    day: {
+        type: String,
+        enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+        required: true,
+    },
+    isHoliday: { type: Boolean, default: false },
+    slots: [SlotSchema],
+}, { timestamps: true });
+
+// One document per user per day
+DayScheduleSchema.index({ userId: 1, day: 1 }, { unique: true });
+
+module.exports = mongoose.model('Schedule', DayScheduleSchema);
