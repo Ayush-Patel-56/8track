@@ -2,9 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
-import { Sun, Moon, Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
-import { useThemeStore } from '../store/themeStore';
 import api from '../lib/api';
 
 // ─── Inline Styles for Placeholder ───────────────────────────────────────────
@@ -186,7 +185,6 @@ function AuthPage() {
     const [resendTimer, setResendTimer] = useState(0);
     const navigate = useNavigate();
     const setAuth = useAuthStore((s) => s.setAuth);
-    const { theme, toggleTheme } = useThemeStore();
 
     const { register, handleSubmit, formState: { errors }, reset, watch, getValues } = useForm();
     const password = watch('password', '');
@@ -330,15 +328,6 @@ function AuthPage() {
 
             {/* ── Right Panel ── */}
             <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 relative">
-
-                {/* Theme Toggle */}
-                <button onClick={toggleTheme}
-                    className="absolute top-6 right-6 p-2 rounded-lg transition-colors"
-                    style={{ background: '#1E1E22', border: '1px solid #2E2E35', color: '#8A8A95' }}
-                    aria-label="Toggle theme"
-                >
-                    {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-                </button>
 
                 {/* Mobile Logo */}
                 <div className="lg:hidden flex items-center gap-2 mb-8">

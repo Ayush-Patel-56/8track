@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
-    Plus, Search, Filter, ChevronDown, 
+    Plus, Filter, ChevronDown, 
     MoreHorizontal, Calendar, CheckCircle2, 
     Clock, AlertCircle, X, Check, ArrowRight, ArrowLeft,
     Pencil, Trash2, MoreVertical

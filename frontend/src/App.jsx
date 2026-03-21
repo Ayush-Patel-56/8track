@@ -1,7 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useEffect } from 'react';
-import { useThemeStore } from './store/themeStore';
 import { useAuthStore } from './store/authStore';
 import AuthPage from './pages/AuthPage';
 import Layout from './components/layout/Layout';
@@ -18,14 +17,6 @@ function ProtectedRoute({ children }) {
 }
 
 function AppContent() {
-  const { theme } = useThemeStore();
-
-  useEffect(() => {
-    const root = document.documentElement;
-    if (theme === 'dark') root.classList.add('dark');
-    else root.classList.remove('dark');
-  }, [theme]);
-
   return (
     <Routes>
       <Route path="/auth" element={<AuthPage />} />

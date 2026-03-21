@@ -187,7 +187,7 @@ function SubjectRow({ subject, color, onMark }) {
 export default function DashboardPage() {
     const [isExpanded, setIsExpanded] = useState(false);
     const user = useAuthStore((s) => s.user);
-    const firstName = user?.name?.split(' ')[0] || 'Ayush';
+    const firstName = user?.name?.split(' ')[0] || '';
     const today = format(new Date(), 'EEEE, MMMM d');
     const queryClient = useQueryClient();
 

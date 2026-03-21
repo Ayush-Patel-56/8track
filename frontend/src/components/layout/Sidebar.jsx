@@ -45,16 +45,13 @@ export default function Sidebar() {
                 <div className="flex items-center gap-3 px-2 mb-8">
                     <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0 border-2 border-[var(--active-highlight)]">
                         <img 
-                            src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.name || 'Ayush'}`} 
+                            src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.name || 'User'}`} 
                             alt="Avatar" 
                             className="w-full h-full object-cover"
                         />
                     </div>
                     <div className="overflow-hidden">
-                        <p className="text-[14px] font-bold text-[var(--text-warm)] truncate leading-tight">{user?.name || 'Ayush Patel'}</p>
-                        <p className="text-[11px] font-medium text-[var(--text-muted)] truncate mt-0.5">
-                            {user?.section || 'Section 1A'}
-                        </p>
+                        <p className="text-[14px] font-bold text-[var(--text-warm)] truncate leading-tight">{user?.name || ''}</p>
                     </div>
                 </div>
 
