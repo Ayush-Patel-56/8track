@@ -1,5 +1,8 @@
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 const User = require('../models/User');
+const Otp = require('../models/Otp');
+const { sendOtpEmail } = require('../utils/emailService');
 
 const generateAccessToken = (id) =>
     jwt.sign({ id }, process.env.JWT_ACCESS_SECRET, {
@@ -26,9 +29,6 @@ const register = async (req, res) => {
 
     if (!name || !email || !password) {
         return res.status(400).json({ message: 'Name, email and password are required' });
-    }
-    if (password.length < 6) {
-        return res.status(400).json({ message: 'Password must be at least 6 characters' });
     }
 
     try {
@@ -176,4 +176,106 @@ const updateProfile = async (req, res) => {
     }
 };
 
-module.exports = { register, login, refreshToken, logout, getProfile, updateProfile };
+// Send OTP for registration
+const sendOtp = async (req, res) => {
+    const { name, email, password, institution, branch, semester } = req.body;
+
+    if (!name || !email || !password) {
+        return res.status(400).json({ message: 'Name, email and password are required' });
+    }
+
+    try {
+        const existing = await User.findOne({ email });
+        if (existing) {
+            return res.status(409).json({ message: 'Email already registered' });
+        }
+
+        // Generate 6-digit OTP
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const otpHash = await bcrypt.hash(otp, 10);
+        const expiresMinutes = parseInt(process.env.OTP_EXPIRES_MINUTES) || 10;
+        const expiresAt = new Date(Date.now() + expiresMinutes * 60 * 1000);
+
+        // Remove any previous pending OTPs for this email
+        await Otp.deleteMany({ email });
+
+        await Otp.create({
+            email,
+            otpHash,
+            userData: { name, email, password, institution, branch, semester },
+            expiresAt,
+        });
+
+        await sendOtpEmail(email, otp);
+
+        return res.status(200).json({ message: 'OTP sent to your email. It expires in ' + expiresMinutes + ' minutes.' });
+    } catch (err) {
+        console.error('sendOtp error:', err);
+        return res.status(500).json({ message: 'Failed to send OTP. Please try again.' });
+    }
+};
+
+// Verify OTP and create account
+const verifyOtpAndRegister = async (req, res) => {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+        return res.status(400).json({ message: 'Email and OTP are required' });
+    }
+
+    try {
+        const record = await Otp.findOne({ email });
+        if (!record) {
+            return res.status(400).json({ message: 'OTP not found or has expired. Please request a new one.' });
+        }
+
+        if (record.expiresAt < new Date()) {
+            await Otp.deleteOne({ email });
+            return res.status(400).json({ message: 'OTP has expired. Please request a new one.' });
+        }
+
+        const isMatch = await bcrypt.compare(otp, record.otpHash);
+        if (!isMatch) {
+            return res.status(400).json({ message: 'Invalid OTP. Please try again.' });
+        }
+
+        // OTP valid — create the user
+        const { name, password, institution, branch, semester } = record.userData;
+
+        const existingUser = await User.findOne({ email });
+        if (existingUser) {
+            await Otp.deleteOne({ email });
+            return res.status(409).json({ message: 'Email already registered' });
+        }
+
+        const user = await User.create({ name, email, password, institution, branch, semester });
+
+        const accessToken = generateAccessToken(user.id);
+        const refreshToken = generateRefreshToken(user.id);
+
+        user.refreshToken = refreshToken;
+        await user.save();
+
+        setRefreshCookie(res, refreshToken);
+
+        // Cleanup the OTP record
+        await Otp.deleteOne({ email });
+
+        return res.status(201).json({
+            accessToken,
+            user: {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                institution: user.institution,
+                branch: user.branch,
+                semester: user.semester,
+            },
+        });
+    } catch (err) {
+        console.error('verifyOtpAndRegister error:', err);
+        return res.status(500).json({ message: 'Server error during verification' });
+    }
+};
+
+module.exports = { register, login, refreshToken, logout, getProfile, updateProfile, sendOtp, verifyOtpAndRegister };

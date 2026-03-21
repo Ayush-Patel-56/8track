@@ -180,16 +180,20 @@ function PasswordStrength({ password = '' }) {
 function AuthPage() {
     const [tab, setTab] = useState('signin');
     const [showPassword, setShowPassword] = useState(false);
+    const [otpStep, setOtpStep] = useState(false);
+    const [pendingEmail, setPendingEmail] = useState('');
+    const [otpValues, setOtpValues] = useState(['', '', '', '', '', '']);
+    const [resendTimer, setResendTimer] = useState(0);
     const navigate = useNavigate();
     const setAuth = useAuthStore((s) => s.setAuth);
     const { theme, toggleTheme } = useThemeStore();
 
-    const { register, handleSubmit, formState: { errors }, reset, watch } = useForm();
+    const { register, handleSubmit, formState: { errors }, reset, watch, getValues } = useForm();
     const password = watch('password', '');
 
-    const isPasswordValid = password.length >= 8 && 
-                            /\d/.test(password) && 
-                            /[A-Z]/.test(password) && 
+    const isPasswordValid = password.length >= 8 &&
+                            /\d/.test(password) &&
+                            /[A-Z]/.test(password) &&
                             /[!@#$%^&*(),.?":{}|<>]/.test(password);
 
     const loginMutation = useMutation({
@@ -197,24 +201,93 @@ function AuthPage() {
         onSuccess: ({ data }) => { setAuth(data.user, data.accessToken); navigate('/dashboard'); },
     });
 
-    const registerMutation = useMutation({
-        mutationFn: (data) => api.post('/auth/register', data),
+    const sendOtpMutation = useMutation({
+        mutationFn: (data) => api.post('/auth/send-otp', data),
+        onSuccess: (_, variables) => {
+            setPendingEmail(variables.email);
+            setOtpStep(true);
+            setOtpValues(['', '', '', '', '', '']);
+            startResendTimer();
+        },
+    });
+
+    const verifyOtpMutation = useMutation({
+        mutationFn: (data) => api.post('/auth/verify-otp', data),
         onSuccess: ({ data }) => { setAuth(data.user, data.accessToken); navigate('/dashboard'); },
     });
+
+    const startResendTimer = () => {
+        setResendTimer(30);
+        const interval = setInterval(() => {
+            setResendTimer((prev) => {
+                if (prev <= 1) { clearInterval(interval); return 0; }
+                return prev - 1;
+            });
+        }, 1000);
+    };
 
     const onSubmit = (data) => {
         if (tab === 'signin') {
             loginMutation.mutate({ email: data.email, password: data.password });
         } else {
-            if (!isPasswordValid) return; // safety
-            registerMutation.mutate(data);
+            if (!isPasswordValid) return;
+            sendOtpMutation.mutate(data);
         }
     };
 
-    const isLoading = loginMutation.isPending || registerMutation.isPending;
-    const error = loginMutation.error?.response?.data?.message || registerMutation.error?.response?.data?.message;
+    const handleOtpChange = (index, value) => {
+        if (!/^\d?$/.test(value)) return;
+        const next = [...otpValues];
+        next[index] = value;
+        setOtpValues(next);
+        if (value && index < 5) {
+            document.getElementById(`otp-${index + 1}`)?.focus();
+        }
+    };
 
-    const handleTabChange = (newTab) => { setTab(newTab); reset(); loginMutation.reset(); registerMutation.reset(); };
+    const handleOtpKeyDown = (index, e) => {
+        if (e.key === 'Backspace' && !otpValues[index] && index > 0) {
+            document.getElementById(`otp-${index - 1}`)?.focus();
+        }
+    };
+
+    const handleOtpPaste = (e) => {
+        e.preventDefault();
+        const text = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+        const next = [...otpValues];
+        text.split('').forEach((char, i) => { next[i] = char; });
+        setOtpValues(next);
+        const lastFilled = Math.min(text.length, 5);
+        document.getElementById(`otp-${lastFilled}`)?.focus();
+    };
+
+    const handleVerifyOtp = () => {
+        const otp = otpValues.join('');
+        if (otp.length !== 6) return;
+        verifyOtpMutation.mutate({ email: pendingEmail, otp });
+    };
+
+    const handleResendOtp = () => {
+        if (resendTimer > 0) return;
+        const data = getValues();
+        sendOtpMutation.mutate(data);
+    };
+
+    const isLoading = loginMutation.isPending || sendOtpMutation.isPending;
+    const error = loginMutation.error?.response?.data?.message ||
+                  sendOtpMutation.error?.response?.data?.message ||
+                  verifyOtpMutation.error?.response?.data?.message;
+
+    const handleTabChange = (newTab) => {
+        setTab(newTab);
+        setOtpStep(false);
+        setPendingEmail('');
+        setOtpValues(['', '', '', '', '', '']);
+        reset();
+        loginMutation.reset();
+        sendOtpMutation.reset();
+        verifyOtpMutation.reset();
+    };
 
     // ── Input class helper ──
     const inputCls = 'auth-input w-full px-4 py-3 rounded-lg text-sm border transition-all focus:outline-none';
@@ -274,38 +347,127 @@ function AuthPage() {
                 </div>
 
                 <div className="w-full max-w-sm">
-                    {/* Heading */}
-                    <h1 className="text-2xl font-bold text-center mb-1" style={{ color: '#F0EEE8' }}>
-                        {tab === 'signin' ? 'Welcome back' : 'Create your account'}
-                    </h1>
-                    <p className="text-sm text-center mb-7" style={{ color: '#6B6B72' }}>
-                        {tab === 'signin' ? 'Log in to manage your academic track.' : 'Start tracking your attendance today.'}
-                    </p>
 
-                    {/* Tab Toggle */}
-                    <div className="flex rounded-full p-1 mb-7"
-                        style={{ background: '#1E1E22' }}>
-                        {['signin', 'register'].map((t) => (
-                            <button key={t}
-                                onClick={() => handleTabChange(t)}
-                                style={tab === t
-                                    ? { background: '#F0A830', color: '#1A1208' }
-                                    : { color: '#8A8A95' }
-                                }
-                                className="flex-1 py-2 text-sm font-semibold rounded-full transition-all duration-200"
+                    {/* ── OTP Step ── */}
+                    {otpStep ? (
+                        <div>
+                            <button
+                                type="button"
+                                onClick={() => { setOtpStep(false); verifyOtpMutation.reset(); sendOtpMutation.reset(); }}
+                                className="flex items-center gap-1.5 text-xs mb-6 transition-colors"
+                                style={{ color: '#6B6B72' }}
                             >
-                                {t === 'signin' ? 'Sign In' : 'Create Account'}
+                                ← Back
                             </button>
-                        ))}
-                    </div>
+                            <h1 className="text-2xl font-bold text-center mb-1" style={{ color: '#F0EEE8' }}>Check your email</h1>
+                            <p className="text-sm text-center mb-6" style={{ color: '#6B6B72' }}>
+                                We sent a 6-digit code to <span style={{ color: '#F0A830' }}>{pendingEmail}</span>
+                            </p>
 
-                    {/* Form */}
-                    <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
-                        {tab === 'register' && (
+                            {/* OTP Digit Inputs */}
+                            <div className="flex justify-center gap-3 mb-5" onPaste={handleOtpPaste}>
+                                {otpValues.map((val, i) => (
+                                    <input
+                                        key={i}
+                                        id={`otp-${i}`}
+                                        type="text"
+                                        inputMode="numeric"
+                                        maxLength={1}
+                                        value={val}
+                                        onChange={(e) => handleOtpChange(i, e.target.value)}
+                                        onKeyDown={(e) => handleOtpKeyDown(i, e)}
+                                        className="text-center text-xl font-bold rounded-lg transition-all focus:outline-none"
+                                        style={{
+                                            width: '46px',
+                                            height: '56px',
+                                            background: '#1C1C1F',
+                                            border: val ? '2px solid #F0A830' : '1px solid #2A2A30',
+                                            color: '#F0EEE8',
+                                            boxShadow: val ? '0 0 10px rgba(240,168,48,0.2)' : 'none',
+                                        }}
+                                    />
+                                ))}
+                            </div>
+
+                            {error && (
+                                <div className="px-4 py-2.5 rounded-lg text-sm text-red-400 mb-3"
+                                    style={{ background: 'hsl(0 72% 51% / 0.1)', border: '1px solid hsl(0 72% 51% / 0.2)' }}>
+                                    {error}
+                                </div>
+                            )}
+
+                            <button
+                                type="button"
+                                onClick={handleVerifyOtp}
+                                disabled={otpValues.join('').length !== 6 || verifyOtpMutation.isPending}
+                                className="w-full py-3 rounded-lg text-sm font-bold transition-all duration-150 active:scale-[0.98] disabled:opacity-60"
+                                style={{ background: '#F0A830', color: '#1A1208', boxShadow: '0 4px 24px rgba(240, 168, 48, 0.25)' }}
+                            >
+                                {verifyOtpMutation.isPending ? 'Verifying…' : 'Verify & Create Account'}
+                            </button>
+
+                            <p className="text-xs text-center mt-4" style={{ color: '#4A4A52' }}>
+                                Didn't receive the code?{' '}
+                                <button
+                                    type="button"
+                                    onClick={handleResendOtp}
+                                    disabled={resendTimer > 0 || sendOtpMutation.isPending}
+                                    className="transition-colors disabled:opacity-50"
+                                    style={{ color: resendTimer > 0 ? '#4A4A52' : '#F0A830' }}
+                                >
+                                    {resendTimer > 0 ? `Resend in ${resendTimer}s` : 'Resend OTP'}
+                                </button>
+                            </p>
+                        </div>
+                    ) : (
+                        <>
+                        {/* Heading */}
+                        <h1 className="text-2xl font-bold text-center mb-1" style={{ color: '#F0EEE8' }}>
+                            {tab === 'signin' ? 'Welcome back' : 'Create your account'}
+                        </h1>
+                        <p className="text-sm text-center mb-7" style={{ color: '#6B6B72' }}>
+                            {tab === 'signin' ? 'Log in to manage your academic track.' : 'Start tracking your attendance today.'}
+                        </p>
+
+                        {/* Tab Toggle */}
+                        <div className="flex rounded-full p-1 mb-7"
+                            style={{ background: '#1E1E22' }}>
+                            {['signin', 'register'].map((t) => (
+                                <button key={t}
+                                    onClick={() => handleTabChange(t)}
+                                    style={tab === t
+                                        ? { background: '#F0A830', color: '#1A1208' }
+                                        : { color: '#8A8A95' }
+                                    }
+                                    className="flex-1 py-2 text-sm font-semibold rounded-full transition-all duration-200"
+                                >
+                                    {t === 'signin' ? 'Sign In' : 'Create Account'}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Form */}
+                        <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+                            {tab === 'register' && (
+                                <div>
+                                    <input {...register('name', { required: 'Name is required' })}
+                                        type="text"
+                                        placeholder="Full name"
+                                        className={inputCls}
+                                        style={{
+                                            background: '#1C1C1F',
+                                            border: '1px solid #2A2A30',
+                                            color: '#F0EEE8'
+                                        }}
+                                    />
+                                    {errors.name && <p className="text-xs text-red-400 mt-1">{errors.name.message}</p>}
+                                </div>
+                            )}
+
                             <div>
-                                <input {...register('name', { required: 'Name is required' })}
-                                    type="text"
-                                    placeholder="Full name"
+                                <input {...register('email', { required: 'Email is required', pattern: { value: /\S+@\S+\.\S+/, message: 'Invalid email' } })}
+                                    type="email"
+                                    placeholder="Email address"
                                     className={inputCls}
                                     style={{
                                         background: '#1C1C1F',
@@ -313,101 +475,88 @@ function AuthPage() {
                                         color: '#F0EEE8'
                                     }}
                                 />
-                                {errors.name && <p className="text-xs text-red-400 mt-1">{errors.name.message}</p>}
+                                {errors.email && <p className="text-xs text-red-400 mt-1">{errors.email.message}</p>}
                             </div>
-                        )}
 
-                        <div>
-                            <input {...register('email', { required: 'Email is required', pattern: { value: /\S+@\S+\.\S+/, message: 'Invalid email' } })}
-                                type="email"
-                                placeholder="Email address"
-                                className={inputCls}
-                                style={{
-                                    background: '#1C1C1F',
-                                    border: '1px solid #2A2A30',
-                                    color: '#F0EEE8'
-                                }}
-                            />
-                            {errors.email && <p className="text-xs text-red-400 mt-1">{errors.email.message}</p>}
-                        </div>
-
-                        <div className="relative">
-                            <input {...register('password', { required: 'Password is required' })}
-                                type={showPassword ? 'text' : 'password'}
-                                placeholder="Password"
-                                className={inputCls + ' pr-12'}
-                                style={{
-                                    background: '#1C1C1F',
-                                    border: '1px solid #2A2A30',
-                                    color: '#F0EEE8'
-                                }}
-                            />
-                            <button type="button" onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors"
-                                style={{ color: '#4A4A52' }}
-                            >
-                                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                            </button>
-                            {errors.password && <p className="text-xs text-red-400 mt-1">{errors.password.message}</p>}
-                        </div>
-
-                        {tab === 'register' && <PasswordStrength password={password} />}
-
-                        {tab === 'signin' && (
-                            <div className="text-right">
-                                <button type="button" className="text-xs transition-colors" style={{ color: '#6B6B72' }}>
-                                    Forgot password?
+                            <div className="relative">
+                                <input {...register('password', { required: 'Password is required' })}
+                                    type={showPassword ? 'text' : 'password'}
+                                    placeholder="Password"
+                                    className={inputCls + ' pr-12'}
+                                    style={{
+                                        background: '#1C1C1F',
+                                        border: '1px solid #2A2A30',
+                                        color: '#F0EEE8'
+                                    }}
+                                />
+                                <button type="button" onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors"
+                                    style={{ color: '#4A4A52' }}
+                                >
+                                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                 </button>
+                                {errors.password && <p className="text-xs text-red-400 mt-1">{errors.password.message}</p>}
                             </div>
-                        )}
 
-                        {error && (
-                            <div className="px-4 py-2.5 rounded-lg text-sm text-red-400"
-                                style={{ background: 'hsl(0 72% 51% / 0.1)', border: '1px solid hsl(0 72% 51% / 0.2)' }}>
-                                {error}
-                            </div>
-                        )}
+                            {tab === 'register' && <PasswordStrength password={password} />}
 
-                        {/* Primary CTA */}
-                        <button type="submit" disabled={isLoading || (tab === 'register' && !isPasswordValid)}
-                            className="w-full py-3 rounded-lg text-sm font-bold transition-all duration-150 active:scale-[0.98] disabled:opacity-60 mt-1"
-                            style={{ background: '#F0A830', color: '#1A1208', boxShadow: '0 4px 24px rgba(240, 168, 48, 0.25)' }}
+                            {tab === 'signin' && (
+                                <div className="text-right">
+                                    <button type="button" className="text-xs transition-colors" style={{ color: '#6B6B72' }}>
+                                        Forgot password?
+                                    </button>
+                                </div>
+                            )}
+
+                            {error && (
+                                <div className="px-4 py-2.5 rounded-lg text-sm text-red-400"
+                                    style={{ background: 'hsl(0 72% 51% / 0.1)', border: '1px solid hsl(0 72% 51% / 0.2)' }}>
+                                    {error}
+                                </div>
+                            )}
+
+                            {/* Primary CTA */}
+                            <button type="submit" disabled={isLoading || (tab === 'register' && !isPasswordValid)}
+                                className="w-full py-3 rounded-lg text-sm font-bold transition-all duration-150 active:scale-[0.98] disabled:opacity-60 mt-1"
+                                style={{ background: '#F0A830', color: '#1A1208', boxShadow: '0 4px 24px rgba(240, 168, 48, 0.25)' }}
+                            >
+                                {isLoading ? 'Please wait…' : tab === 'signin' ? 'Sign In' : 'Create Account'}
+                            </button>
+                        </form>
+
+                        {/* OR divider */}
+                        <div className="flex items-center gap-3 my-5">
+                            <div className="flex-1 h-px" style={{ background: '#2A2A30' }} />
+                            <span className="text-xs" style={{ color: '#3A3A42' }}>OR</span>
+                            <div className="flex-1 h-px" style={{ background: '#2A2A30' }} />
+                        </div>
+
+                        {/* Continue with Google */}
+                        <button type="button"
+                            className="w-full flex items-center justify-center gap-3 py-3 rounded-lg text-sm font-medium transition-all hover:opacity-80"
+                            style={{ background: '#1C1C1F', border: '1px solid #2A2A2E', color: '#F0EEE8' }}
                         >
-                            {isLoading ? 'Please wait…' : tab === 'signin' ? 'Sign In' : 'Create Account'}
+                            <GoogleIcon />
+                            Continue with Google
                         </button>
-                    </form>
 
-                    {/* OR divider */}
-                    <div className="flex items-center gap-3 my-5">
-                        <div className="flex-1 h-px" style={{ background: '#2A2A30' }} />
-                        <span className="text-xs" style={{ color: '#3A3A42' }}>OR</span>
-                        <div className="flex-1 h-px" style={{ background: '#2A2A30' }} />
-                    </div>
-
-                    {/* Continue with Google */}
-                    <button type="button"
-                        className="w-full flex items-center justify-center gap-3 py-3 rounded-lg text-sm font-medium transition-all hover:opacity-80"
-                        style={{ background: '#1C1C1F', border: '1px solid #2A2A2E', color: '#F0EEE8' }}
-                    >
-                        <GoogleIcon />
-                        Continue with Google
-                    </button>
-
-                    {/* Terms */}
-                    <p className="text-xs text-center mt-6" style={{ color: '#8A8A95' }}>
-                        By continuing, you agree to our{' '}
-                        <span className="cursor-pointer transition-all" style={{ color: '#8A8A95', textDecoration: 'none' }}
-                            onMouseEnter={(e) => e.target.style.textDecoration = 'underline'}
-                            onMouseLeave={(e) => e.target.style.textDecoration = 'none'}>
-                            Terms
-                        </span>
-                        {' '}and{' '}
-                        <span className="cursor-pointer transition-all" style={{ color: '#8A8A95', textDecoration: 'none' }}
-                            onMouseEnter={(e) => e.target.style.textDecoration = 'underline'}
-                            onMouseLeave={(e) => e.target.style.textDecoration = 'none'}>
-                            Privacy Policy
-                        </span>.
-                    </p>
+                        {/* Terms */}
+                        <p className="text-xs text-center mt-6" style={{ color: '#8A8A95' }}>
+                            By continuing, you agree to our{' '}
+                            <span className="cursor-pointer transition-all" style={{ color: '#8A8A95', textDecoration: 'none' }}
+                                onMouseEnter={(e) => e.target.style.textDecoration = 'underline'}
+                                onMouseLeave={(e) => e.target.style.textDecoration = 'none'}>
+                                Terms
+                            </span>
+                            {' '}and{' '}
+                            <span className="cursor-pointer transition-all" style={{ color: '#8A8A95', textDecoration: 'none' }}
+                                onMouseEnter={(e) => e.target.style.textDecoration = 'underline'}
+                                onMouseLeave={(e) => e.target.style.textDecoration = 'none'}>
+                                Privacy Policy
+                            </span>.
+                        </p>
+                        </>
+                    )}
                 </div>
             </div>
         </div>
