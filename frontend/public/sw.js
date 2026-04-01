@@ -27,6 +27,13 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
     const url = event.request.url;
 
+    // ── DEV MODE: skip ALL interception on localhost ──────────────────────────
+    // Vite's HMR, module graph, and WebSocket requests must reach the dev server
+    // directly. Intercepting them causes ERR_FAILED / ERR_CONNECTION_REFUSED.
+    if (url.includes('localhost') || url.includes('127.0.0.1')) {
+        return; // Let the browser handle it natively
+    }
+
     // Skip Vite dev server internals (HMR, module imports, etc.)
     if (
         url.includes('/@') ||
