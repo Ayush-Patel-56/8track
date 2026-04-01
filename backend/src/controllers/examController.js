@@ -16,6 +16,9 @@ const createExam = async (req, res, next) => {
     if (!examName || marksObtained === undefined || !maxMarks) {
         return res.status(400).json({ message: 'examName, marksObtained, maxMarks are required' });
     }
+    if (marksObtained > maxMarks) {
+        return res.status(400).json({ message: 'Obtained marks cannot be greater than maximum marks' });
+    }
     try {
         const exam = await Exam.create({ userId: req.user.id, examName, subjectId, marksObtained, maxMarks, date });
         res.status(201).json({ exam });

@@ -58,11 +58,19 @@ export default function ExamsPage() {
 
     const handleSubmit = (e) => {
         e.preventDefault();
+        const obtained = Number(formData.marksObtained);
+        const max = Number(formData.maxMarks);
+
+        if (obtained > max) {
+            showToast('Obtained marks cannot be greater than maximum marks', 'error');
+            return;
+        }
+
         createMutation.mutate({
             examName: formData.examName,
             subjectId: formData.subjectId,
-            marksObtained: Number(formData.marksObtained),
-            maxMarks: Number(formData.maxMarks),
+            marksObtained: obtained,
+            maxMarks: max,
         });
     };
 
@@ -276,6 +284,7 @@ export default function ExamsPage() {
                                         type="number"
                                         required
                                         min="0"
+                                        max={formData.maxMarks || ""}
                                         step="0.5"
                                         value={formData.marksObtained}
                                         onChange={(e) => setFormData({ ...formData, marksObtained: e.target.value })}
