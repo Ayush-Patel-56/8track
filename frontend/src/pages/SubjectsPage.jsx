@@ -150,6 +150,13 @@ function WeeklySchedule({ subjects = [] }) {
     const handleAddSlot = (e, day) => {
         e.preventDefault();
         if (!form.subjectName || !form.startTime || !form.endTime) return;
+        
+        // Time validation: Ensure end time is after start time
+        if (form.startTime >= form.endTime) {
+            showToast('End time must be after start time', 'error');
+            return;
+        }
+
         addSlotMutation.mutate({ day, slot: form });
     };
 
@@ -262,6 +269,12 @@ function WeeklySchedule({ subjects = [] }) {
                                                         ))}
                                                     </datalist>
                                                     <div className="flex flex-col gap-2 pt-1">
+                                                        {form.startTime && form.endTime && form.startTime >= form.endTime && (
+                                                            <div className="flex items-center gap-1 text-[9px] font-black uppercase text-red-500 mb-1 ml-1 animate-pulse">
+                                                                <AlertCircle className="w-3 h-3" />
+                                                                End time is before start time
+                                                            </div>
+                                                        )}
                                                         <TimeInput
                                                             label="Start"
                                                             value={form.startTime}
