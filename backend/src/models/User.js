@@ -11,6 +11,11 @@ const UserSchema = new mongoose.Schema(
         semester: { type: String, trim: true },
         pushSubscription: { type: Object },
         refreshToken: { type: String },
+        googleTokens: {
+            access_token: { type: String },
+            refresh_token: { type: String },
+            expiry_date: { type: Number },
+        },
     },
     { timestamps: true }
 );

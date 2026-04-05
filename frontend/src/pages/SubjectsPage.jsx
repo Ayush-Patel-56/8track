@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { BookOpen, Plus, MoreHorizontal, CheckCircle2, AlertCircle, XCircle, Trash2, Edit2, X, CalendarX, Clock } from 'lucide-react';
+import { BookOpen, Plus, CheckCircle2, AlertCircle, XCircle, Trash2, Edit2, X, CalendarX, Clock, CalendarCheck, RefreshCw, Unlink, ExternalLink } from 'lucide-react';
 import api from '../lib/api';
 import { useToast } from '../components/common/Toast';
 
@@ -327,6 +327,133 @@ function WeeklySchedule({ subjects = [] }) {
     );
 }
 
+// ─── Google Calendar Sync Panel ───────────────────────────────────────────────
+function GoogleCalendarSync() {
+    const { showToast } = useToast();
+    const queryClient = useQueryClient();
+
+    const { data: statusData, isLoading: statusLoading, refetch: refetchStatus } = useQuery({
+        queryKey: ['google-calendar-status'],
+        queryFn: () => api.get('/google/status').then(r => r.data),
+        retry: false,
+    });
+
+    const connected = statusData?.connected ?? false;
+
+    const handleConnect = useCallback(async () => {
+        try {
+            const { data } = await api.get('/google/auth-url');
+            const popup = window.open(data.url, 'googleOAuth', 'width=520,height=620');
+
+            const listener = (event) => {
+                if (event.data === 'google-auth-success') {
+                    window.removeEventListener('message', listener);
+                    popup?.close();
+                    refetchStatus();
+                    showToast('Google Calendar connected!', 'success');
+                }
+            };
+            window.addEventListener('message', listener);
+        } catch (err) {
+            showToast('Failed to start Google OAuth', 'error');
+        }
+    }, [refetchStatus, showToast]);
+
+    const syncMutation = useMutation({
+        mutationFn: () => api.post('/google/sync'),
+        onSuccess: (res) => showToast(res.data.message, 'success'),
+        onError: (err) => showToast(err.response?.data?.message || 'Sync failed', 'error'),
+    });
+
+    const disconnectMutation = useMutation({
+        mutationFn: () => api.delete('/google/disconnect'),
+        onSuccess: () => {
+            refetchStatus();
+            showToast('Google Calendar disconnected', 'success');
+        },
+        onError: (err) => showToast(err.response?.data?.message || 'Disconnect failed', 'error'),
+    });
+
+    return (
+        <div
+            className="rounded-2xl p-5 flex items-center justify-between gap-6 mb-8"
+            style={{
+                background: connected
+                    ? 'linear-gradient(135deg, rgba(66,133,244,0.1), rgba(52,168,83,0.08))'
+                    : 'hsl(240 10% 9%)',
+                border: `1px solid ${connected ? 'rgba(66,133,244,0.3)' : 'hsl(240 6% 18%)'}`,
+            }}
+        >
+            {/* Left: Icon + Text */}
+            <div className="flex items-center gap-4">
+                <div
+                    className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+                    style={{
+                        background: connected ? 'rgba(66,133,244,0.15)' : 'hsl(240 6% 14%)',
+                        border: `1px solid ${connected ? 'rgba(66,133,244,0.3)' : 'hsl(240 6% 22%)'}`,
+                    }}
+                >
+                    <CalendarCheck
+                        className="w-5 h-5"
+                        style={{ color: connected ? '#4285F4' : 'hsl(240 5% 45%)' }}
+                    />
+                </div>
+                <div>
+                    <p className="text-sm font-bold text-white tracking-tight">Google Calendar Sync</p>
+                    {statusLoading ? (
+                        <p className="text-xs mt-0.5 animate-pulse" style={{ color: 'hsl(240 5% 50%)' }}>Checking status...</p>
+                    ) : connected ? (
+                        <p className="text-xs mt-0.5" style={{ color: '#34A853' }}>
+                            ✓ Connected — your schedule syncs to Google Calendar
+                        </p>
+                    ) : (
+                        <p className="text-xs mt-0.5" style={{ color: 'hsl(240 5% 50%)' }}>
+                            Connect to push your weekly timetable to Google Calendar
+                        </p>
+                    )}
+                </div>
+            </div>
+
+            {/* Right: Action Buttons */}
+            <div className="flex items-center gap-2 flex-shrink-0">
+                {connected ? (
+                    <>
+                        <button
+                            onClick={() => syncMutation.mutate()}
+                            disabled={syncMutation.isPending}
+                            className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 disabled:opacity-50"
+                            style={{ background: 'rgba(66,133,244,0.15)', color: '#4285F4', border: '1px solid rgba(66,133,244,0.3)' }}
+                            title="Push your 8-Track schedule to Google Calendar as recurring events"
+                        >
+                            <RefreshCw className={`w-3.5 h-3.5 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
+                            {syncMutation.isPending ? 'Syncing...' : 'Sync Now'}
+                        </button>
+                        <button
+                            onClick={() => disconnectMutation.mutate()}
+                            disabled={disconnectMutation.isPending}
+                            className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 disabled:opacity-50 hover:bg-red-500/10"
+                            style={{ color: 'hsl(240 5% 50%)', border: '1px solid hsl(240 6% 22%)' }}
+                            title="Disconnect Google Calendar"
+                        >
+                            <Unlink className="w-3.5 h-3.5" />
+                            Disconnect
+                        </button>
+                    </>
+                ) : (
+                    <button
+                        onClick={handleConnect}
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all hover:scale-105 active:scale-95"
+                        style={{ background: '#4285F4', color: 'white' }}
+                    >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        Connect Google
+                    </button>
+                )}
+            </div>
+        </div>
+    );
+}
+
 // ─── Subjects Page ───────────────────────────────────────────────────────────
 export default function SubjectsPage() {
     const queryClient = useQueryClient();
@@ -511,6 +638,7 @@ export default function SubjectsPage() {
             )}
 
             {/* ── Weekly Schedule Section ── */}
+            <GoogleCalendarSync />
             <WeeklySchedule subjects={subjects} />
 
             {/* ── Modal ── */}

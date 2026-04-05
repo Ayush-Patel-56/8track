@@ -12,6 +12,7 @@ const taskRoutes = require("./routes/task.routes");
 const examRoutes = require("./routes/exam.routes");
 const pushRoutes = require("./routes/push.routes");
 const scheduleRoutes = require("./routes/schedule.routes");
+const googleRoutes = require("./routes/google.routes");
 const errorHandler = require("./middleware/errorHandler");
 
 const app = express();
@@ -37,6 +38,7 @@ app.use("/api/tasks", taskRoutes);
 app.use("/api/exams", examRoutes);
 app.use("/api/push", pushRoutes);
 app.use("/api/schedule", scheduleRoutes);
+app.use("/api/google", googleRoutes);
 
 // ── Health check ──────────────────────────────────────────────────────────────
 app.get("/api/health", (req, res) => {
