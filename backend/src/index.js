@@ -72,10 +72,10 @@ mongoose
 
 // ── Process-level safety nets ─────────────────────────────────────────────────
 process.on('unhandledRejection', (reason) => {
-  console.error(' Unhandled Rejection:', reason);
+  console.error('🔴 Unhandled Rejection:', reason instanceof Error ? reason.stack : reason);
 });
 
 process.on('uncaughtException', (err) => {
-  console.error(' Uncaught Exception:', err.message);
-  process.exit(1);
+  console.error('💥 Uncaught Exception:', err.stack || err.message);
+  // process.exit(1); // Keep alive for debugging if possible, or at least see log
 });

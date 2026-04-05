@@ -24,7 +24,7 @@ const setRefreshCookie = (res, token) => {
 };
 
 // Register
-const register = async (req, res) => {
+const register = async (req, res, next) => {
     const { name, email, password, institution, branch, semester } = req.body;
 
     if (!name || !email || !password) {
@@ -64,7 +64,7 @@ const register = async (req, res) => {
 };
 
 // Login
-const login = async (req, res) => {
+const login = async (req, res, next) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
@@ -107,7 +107,7 @@ const login = async (req, res) => {
 };
 
 // Refresh Token
-const refreshToken = async (req, res) => {
+const refreshToken = async (req, res, next) => {
     const token = req.cookies?.refreshToken;
     if (!token) {
         return res.status(401).json({ message: 'No refresh token' });
@@ -136,7 +136,7 @@ const refreshToken = async (req, res) => {
 };
 
 // Logout
-const logout = async (req, res) => {
+const logout = async (req, res, next) => {
     const token = req.cookies?.refreshToken;
 
     if (token) {
@@ -157,12 +157,12 @@ const logout = async (req, res) => {
 };
 
 // Get Profile
-const getProfile = async (req, res) => {
+const getProfile = async (req, res, next) => {
     res.json({ user: req.user });
 };
 
 // Update Profile
-const updateProfile = async (req, res) => {
+const updateProfile = async (req, res, next) => {
     const { name, institution, branch, semester } = req.body;
     try {
         const user = await User.findByIdAndUpdate(
@@ -177,7 +177,7 @@ const updateProfile = async (req, res) => {
 };
 
 // Send OTP for registration
-const sendOtp = async (req, res) => {
+const sendOtp = async (req, res, next) => {
     const { name, email, password, institution, branch, semester } = req.body;
 
     if (!name || !email || !password) {
@@ -216,7 +216,7 @@ const sendOtp = async (req, res) => {
 };
 
 // Verify OTP and create account
-const verifyOtpAndRegister = async (req, res) => {
+const verifyOtpAndRegister = async (req, res, next) => {
     const { email, otp } = req.body;
 
     if (!email || !otp) {

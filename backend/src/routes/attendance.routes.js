@@ -5,6 +5,7 @@ const { protect } = require('../middleware/auth');
 const router = express.Router();
 router.use(protect);
 router.post('/', markAttendance);
+router.post('/mark', markAttendance);
 router.get('/', getGlobalAttendance);
 router.get('/:subjectId', getAttendanceHistory);
 router.put('/:id', updateAttendance);
