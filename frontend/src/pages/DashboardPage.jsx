@@ -326,7 +326,10 @@ export default function DashboardPage() {
     const markMutation = useMutation({
         mutationFn: ({ subjectId, status }) =>
             api.post('/attendance/mark', { subjectId, status, date: new Date().toISOString() }),
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['subjects'] }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['subjects'] });
+            queryClient.invalidateQueries({ queryKey: ['notifications'] });
+        },
         onError: (err) => showToast(err.response?.data?.message || 'Failed to mark attendance', 'error'),
     });
 

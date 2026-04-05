@@ -1,4 +1,4 @@
-import { Bell } from 'lucide-react';
+import NotificationDropdown from '../dashboard/NotificationDropdown';
 import { useAuthStore } from '../../store/authStore';
 
 export default function TopBar({ title = 'Dashboard' }) {
@@ -14,10 +14,7 @@ export default function TopBar({ title = 'Dashboard' }) {
 
             {/* Actions */}
             <div className="flex items-center gap-3">
-                <button className="p-2.5 rounded-xl transition-all hover:text-white hover:bg-[var(--active-highlight)]"
-                    style={{ color: 'var(--text-muted)' }}>
-                    <Bell className="w-5 h-5" />
-                </button>
+                <NotificationDropdown />
                 <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-[var(--active-highlight)] ml-2 cursor-pointer transition-transform hover:scale-105">
                      <img 
                         src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.name || 'User'}`} 

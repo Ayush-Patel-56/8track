@@ -1,6 +1,7 @@
 const Attendance = require('../models/Attendance');
 const Subject = require('../models/Subject');
 const { calcPercentage, calcStatus, safeToMiss, recoveryNeeded } = require('../utils/prediction');
+const { createNotification } = require('./notificationController');
 
 const markAttendance = async (req, res, next) => {
     let { subjectId, status, date } = req.body;
@@ -23,11 +24,22 @@ const markAttendance = async (req, res, next) => {
             status,
         });
 
+        const oldStatus = subject.status;
         subject.totalClasses += 1;
         if (status === 'present') subject.attendedClasses += 1;
         subject.percentage = calcPercentage(subject.attendedClasses, subject.totalClasses);
         subject.status = calcStatus(subject.percentage);
         await subject.save();
+
+        // Notify of status change
+        if (oldStatus !== subject.status) {
+            let title = 'Attendance Status Changed';
+            let message = `Your attendance status for ${subject.name} has changed to ${subject.status.toUpperCase()}.`;
+            let type = subject.status === 'safe' ? 'success' : subject.status === 'warning' ? 'warning' : 'attendance';
+            await createNotification(req.user.id, title, message, type, `/attendance/${subject._id}`);
+        } else if (status === 'absent' && subject.status === 'danger') {
+             await createNotification(req.user.id, 'Critical Attendance', `You missed a class for ${subject.name} while already in DANGER zone!`, 'error', `/attendance/${subject._id}`);
+        }
 
         const prediction = {
             safeToMiss: safeToMiss(subject.attendedClasses, subject.totalClasses),

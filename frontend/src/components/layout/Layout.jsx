@@ -9,6 +9,7 @@ import AttendancePage from '../../pages/AttendancePage';
 import AttendanceSummaryPage from '../../pages/AttendanceSummaryPage';
 import AssignmentsPage from '../../pages/AssignmentsPage';
 import ProgressPage from '../../pages/ProgressPage';
+import SettingsPage from '../../pages/SettingsPage';
 
 // Stub pages (filled in later phases)
 const ComingSoon = ({ name, phase }) => (
@@ -28,6 +29,7 @@ const PAGE_TITLES = {
     '/progress': 'My Progress',
     '/focus': 'Focus Mode',
     '/subjects': 'Subjects',
+    '/settings': 'Settings',
 };
 
 export default function Layout() {
@@ -50,6 +52,7 @@ export default function Layout() {
                         <Route path="progress" element={<ProgressPage />} />
                         <Route path="focus" element={<FocusPage />} />
                         <Route path="subjects" element={<SubjectsPage />} />
+                        <Route path="settings" element={<SettingsPage />} />
                     </Routes>
                 </main>
             </div>

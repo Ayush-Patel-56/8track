@@ -2,7 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import {
     LayoutDashboard, CalendarCheck, ClipboardList,
-    GraduationCap, TrendingUp, Timer, BookOpen, Zap, LogOut
+    GraduationCap, TrendingUp, Timer, BookOpen, Zap, LogOut, Settings
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import api from '../../lib/api';
@@ -15,6 +15,7 @@ const NAV_ITEMS = [
     { to: '/progress', icon: TrendingUp, label: 'My Progress' },
     { to: '/focus', icon: Timer, label: 'Focus Mode' },
     { to: '/subjects', icon: BookOpen, label: 'Subjects' },
+    { to: '/settings', icon: Settings, label: 'Settings' },
 ];
 
 export default function Sidebar() {

@@ -1,5 +1,6 @@
 const webpush = require('web-push');
 const User = require('../models/User');
+const { createNotification } = require('./notificationController');
 
 // Initialize VAPID on module load
 const isValidVapidKey = (key) => key && key !== 'placeholder' && key.length > 20;
@@ -33,6 +34,7 @@ const sendTestNotification = async (req, res, next) => {
             user.pushSubscription,
             JSON.stringify({ title: '8Track', body: 'Push notifications are working! 🎉' })
         );
+        await createNotification(req.user.id, 'Push Active', 'Web push notifications are now configured! 🎉', 'success');
         res.json({ message: 'Test notification sent' });
     } catch (err) {
         next(err);
