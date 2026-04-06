@@ -78,17 +78,17 @@ export default function AttendancePage() {
                         <h1 className="text-5xl font-black text-white tracking-tighter">{subject.name}</h1>
                         <div className="flex items-center gap-3">
                             <span className="px-3 py-1.5 rounded-lg bg-[var(--active-highlight)] text-white text-[11px] font-black tracking-widest uppercase border border-[rgba(255,255,255,0.05)]">
-                                {subject.code || 'CS201'}
+                                {subject.code || 'NO CODE'}
                             </span>
                             <span className="text-[13px] font-bold text-[var(--text-muted)]">
-                                Prof. {subject.professor || 'R. Sharma'}
+                                {subject.professor ? `Prof. ${subject.professor}` : 'Professor Not Set'}
                             </span>
                             <div className="w-1 h-1 rounded-full bg-[var(--text-muted)] opacity-30" />
                             <span className="px-3 py-1.5 rounded-lg bg-[rgba(232,168,56,0.1)] text-[var(--primary-accent)] text-[11px] font-black tracking-widest uppercase border border-[rgba(232,168,56,0.2)]">
-                                {subject.credits || '3'} Credits
+                                {subject.credits || '0'} Credits
                             </span>
                              <span className="px-3 py-1.5 rounded-lg bg-[var(--active-highlight)] text-[var(--text-muted)] text-[11px] font-black tracking-widest uppercase border border-[rgba(255,255,255,0.05)]">
-                                {subject.semester || 'Semester 1'}
+                                Semester {subject.semester || '1'}
                             </span>
                         </div>
                     </div>

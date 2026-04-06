@@ -475,15 +475,36 @@ export default function SubjectsPage() {
     const [editingSubject, setEditingSubject] = useState(null);
 
     // Form state
-    const [formData, setFormData] = useState({ name: '', totalExpectedClasses: '' });
+    const [formData, setFormData] = useState({ 
+        name: '', 
+        totalExpectedClasses: '',
+        code: '',
+        professor: '',
+        credits: '',
+        semester: ''
+    });
 
     const openModal = (subject = null) => {
         if (subject) {
             setEditingSubject(subject);
-            setFormData({ name: subject.name, totalExpectedClasses: subject.totalExpectedClasses || '' });
+            setFormData({ 
+                name: subject.name, 
+                totalExpectedClasses: subject.totalExpectedClasses || '',
+                code: subject.code || '',
+                professor: subject.professor || '',
+                credits: subject.credits || '',
+                semester: subject.semester || ''
+            });
         } else {
             setEditingSubject(null);
-            setFormData({ name: '', totalExpectedClasses: '' });
+            setFormData({ 
+                name: '', 
+                totalExpectedClasses: '',
+                code: '',
+                professor: '',
+                credits: '',
+                semester: ''
+            });
         }
         setIsAddModalOpen(true);
     };
@@ -491,7 +512,14 @@ export default function SubjectsPage() {
     const closeModal = () => {
         setIsAddModalOpen(false);
         setEditingSubject(null);
-        setFormData({ name: '', totalExpectedClasses: '' });
+        setFormData({ 
+            name: '', 
+            totalExpectedClasses: '',
+            code: '',
+            professor: '',
+            credits: '',
+            semester: ''
+        });
     };
 
     // ── Queries and Mutations ──
@@ -532,6 +560,10 @@ export default function SubjectsPage() {
         const payload = {
             name: formData.name,
             totalExpectedClasses: formData.totalExpectedClasses ? parseInt(formData.totalExpectedClasses, 10) : 0,
+            code: formData.code,
+            professor: formData.professor,
+            credits: formData.credits ? parseInt(formData.credits, 10) : 0,
+            semester: formData.semester ? parseInt(formData.semester, 10) : 1,
         };
 
         if (editingSubject) {
@@ -670,21 +702,79 @@ export default function SubjectsPage() {
                         </div>
 
                         <form onSubmit={handleSubmit} className="p-5 space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-black uppercase tracking-widest mb-1.5 opacity-40 ml-1">Course Code</label>
+                                    <input
+                                        type="text"
+                                        value={formData.code}
+                                        onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                                        placeholder="e.g. CS201"
+                                        className="w-full px-4 py-2.5 rounded-xl text-sm bg-black/20 border text-white transition-all focus:outline-none"
+                                        style={{ borderColor: 'hsl(240 6% 20%)' }}
+                                        onFocus={(e) => e.target.style.borderColor = 'hsl(43 96% 56%)'}
+                                        onBlur={(e) => e.target.style.borderColor = 'hsl(240 6% 20%)'}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-black uppercase tracking-widest mb-1.5 opacity-40 ml-1">Credits</label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        value={formData.credits}
+                                        onChange={(e) => setFormData({ ...formData, credits: e.target.value })}
+                                        placeholder="e.g. 3"
+                                        className="w-full px-4 py-2.5 rounded-xl text-sm bg-black/20 border text-white transition-all focus:outline-none"
+                                        style={{ borderColor: 'hsl(240 6% 20%)' }}
+                                        onFocus={(e) => e.target.style.borderColor = 'hsl(43 96% 56%)'}
+                                        onBlur={(e) => e.target.style.borderColor = 'hsl(240 6% 20%)'}
+                                    />
+                                </div>
+                            </div>
+
                             <div>
-                                <label className="block text-xs font-semibold mb-1.5" style={{ color: 'hsl(240 5% 70%)' }}>
-                                    Subject Name <span className="text-red-400">*</span>
-                                </label>
+                                <label className="block text-xs font-black uppercase tracking-widest mb-1.5 opacity-40 ml-1">Subject Name*</label>
                                 <input
                                     type="text"
                                     required
                                     value={formData.name}
                                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                    placeholder="e.g. Applied Physics II"
-                                    className="w-full px-4 py-2.5 rounded-lg text-sm bg-black/20 border text-white transition-colors focus:outline-none"
+                                    placeholder="e.g. Data Structure & Algorithm"
+                                    className="w-full px-4 py-2.5 rounded-xl text-sm bg-black/20 border text-white transition-all focus:outline-none"
                                     style={{ borderColor: 'hsl(240 6% 20%)' }}
                                     onFocus={(e) => e.target.style.borderColor = 'hsl(43 96% 56%)'}
                                     onBlur={(e) => e.target.style.borderColor = 'hsl(240 6% 20%)'}
                                 />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-black uppercase tracking-widest mb-1.5 opacity-40 ml-1">Professor</label>
+                                    <input
+                                        type="text"
+                                        value={formData.professor}
+                                        onChange={(e) => setFormData({ ...formData, professor: e.target.value })}
+                                        placeholder="e.g. Dr. Sharma"
+                                        className="w-full px-4 py-2.5 rounded-xl text-sm bg-black/20 border text-white transition-all focus:outline-none"
+                                        style={{ borderColor: 'hsl(240 6% 20%)' }}
+                                        onFocus={(e) => e.target.style.borderColor = 'hsl(43 96% 56%)'}
+                                        onBlur={(e) => e.target.style.borderColor = 'hsl(240 6% 20%)'}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-black uppercase tracking-widest mb-1.5 opacity-40 ml-1">Semester</label>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        value={formData.semester}
+                                        onChange={(e) => setFormData({ ...formData, semester: e.target.value })}
+                                        placeholder="e.g. 1"
+                                        className="w-full px-4 py-2.5 rounded-xl text-sm bg-black/20 border text-white transition-all focus:outline-none"
+                                        style={{ borderColor: 'hsl(240 6% 20%)' }}
+                                        onFocus={(e) => e.target.style.borderColor = 'hsl(43 96% 56%)'}
+                                        onBlur={(e) => e.target.style.borderColor = 'hsl(240 6% 20%)'}
+                                    />
+                                </div>
                             </div>
 
                             <div>

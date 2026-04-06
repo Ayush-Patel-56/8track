@@ -13,7 +13,7 @@ const getSubjects = async (req, res, next) => {
 };
 
 const createSubject = async (req, res, next) => {
-    const { name, totalExpectedClasses } = req.body;
+    const { name, totalExpectedClasses, code, professor, credits, semester } = req.body;
     if (!name || !name.trim()) {
         return res.status(400).json({ message: 'Subject name is required' });
     }
@@ -22,6 +22,10 @@ const createSubject = async (req, res, next) => {
             userId: req.user.id,
             name: name.trim(),
             totalExpectedClasses: totalExpectedClasses || 0,
+            code,
+            professor,
+            credits: credits || 0,
+            semester: semester || 1,
         });
         res.status(201).json({ subject });
     } catch (err) {
@@ -30,11 +34,11 @@ const createSubject = async (req, res, next) => {
 };
 
 const updateSubject = async (req, res, next) => {
-    const { name, totalExpectedClasses } = req.body;
+    const { name, totalExpectedClasses, code, professor, credits, semester } = req.body;
     try {
         const subject = await Subject.findOneAndUpdate(
             { _id: req.params.id, userId: req.user.id },
-            { name, totalExpectedClasses },
+            { name, totalExpectedClasses, code, professor, credits, semester },
             { new: true }
         );
         if (!subject) return res.status(404).json({ message: 'Subject not found' });
