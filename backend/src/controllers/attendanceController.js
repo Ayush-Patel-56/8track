@@ -17,22 +17,50 @@ const markAttendance = async (req, res, next) => {
         const subject = await Subject.findOne({ _id: subjectId, userId: req.user.id });
         if (!subject) return res.status(404).json({ message: 'Subject not found' });
 
-        const attendance = await Attendance.create({
+        const targetDate = date ? new Date(date) : new Date();
+        const startOfDay = new Date(targetDate.setHours(0, 0, 0, 0));
+        const endOfDay = new Date(targetDate.setHours(23, 59, 59, 999));
+
+        // Check if attendance already marked for this day
+        let attendance = await Attendance.findOne({
             userId: req.user.id,
             subjectId,
-            date: date || new Date(),
-            status,
+            date: { $gte: startOfDay, $lte: endOfDay }
         });
 
-        const oldStatus = subject.status;
-        subject.totalClasses += 1;
-        if (status === 'present') subject.attendedClasses += 1;
+        const oldStatusForSubject = subject.status;
+
+        if (attendance) {
+            // UPDATE EXISTING RECORD
+            const oldRecordStatus = attendance.status;
+            if (oldRecordStatus !== status) {
+                attendance.status = status;
+                await attendance.save();
+
+                // Adjust subject stats
+                if (oldRecordStatus === 'absent' && status === 'present') subject.attendedClasses += 1;
+                if (oldRecordStatus === 'present' && status === 'absent') subject.attendedClasses -= 1;
+            }
+        } else {
+            // CREATE NEW RECORD
+            attendance = await Attendance.create({
+                userId: req.user.id,
+                subjectId,
+                date: date || new Date(),
+                status,
+            });
+
+            subject.totalClasses += 1;
+            if (status === 'present') subject.attendedClasses += 1;
+        }
+
+        // Recalculate subject stats
         subject.percentage = calcPercentage(subject.attendedClasses, subject.totalClasses);
         subject.status = calcStatus(subject.percentage);
         await subject.save();
 
-        // Notify of status change
-        if (oldStatus !== subject.status) {
+        // Notify of status change (same logic as before)
+        if (oldStatusForSubject !== subject.status) {
             let title = 'Attendance Status Changed';
             let message = `Your attendance status for ${subject.name} has changed to ${subject.status.toUpperCase()}.`;
             let type = subject.status === 'safe' ? 'success' : subject.status === 'warning' ? 'warning' : 'attendance';
@@ -41,9 +69,19 @@ const markAttendance = async (req, res, next) => {
              await createNotification(req.user.id, 'Critical Attendance', `You missed a class for ${subject.name} while already in DANGER zone!`, 'error', `/attendance/${subject._id}`);
         }
 
+        const history = await Attendance.find({ userId: req.user.id, subjectId }).sort({ date: -1 });
+        let currentStreak = 0;
+        for (const record of history) {
+            if (record.status === 'present') currentStreak++;
+            else break;
+        }
+        const timeline = history.slice(0, 30).map(h => h.status).reverse();
+
         const prediction = {
             safeToMiss: safeToMiss(subject.attendedClasses, subject.totalClasses),
             recoveryNeeded: recoveryNeeded(subject.attendedClasses, subject.totalClasses),
+            currentStreak,
+            timeline,
         };
 
         res.status(201).json({ attendance, subject, prediction });
@@ -57,10 +95,21 @@ const getAttendanceHistory = async (req, res, next) => {
     try {
         const history = await Attendance.find({ userId: req.user.id, subjectId }).sort({ date: -1 });
         const subject = await Subject.findById(subjectId);
+        
+        // Calculate Streak and Timeline
+        let currentStreak = 0;
+        for (const record of history) {
+            if (record.status === 'present') currentStreak++;
+            else break;
+        }
+        const timeline = history.slice(0, 30).map(h => h.status).reverse();
+
         const prediction = subject
             ? {
                 safeToMiss: safeToMiss(subject.attendedClasses, subject.totalClasses),
                 recoveryNeeded: recoveryNeeded(subject.attendedClasses, subject.totalClasses),
+                currentStreak,
+                timeline,
             }
             : null;
 

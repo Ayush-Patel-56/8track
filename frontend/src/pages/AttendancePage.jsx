@@ -300,13 +300,17 @@ export default function AttendancePage() {
                             <span className="text-[13px] font-bold text-white tracking-tight">Current Streak</span>
                             <div className="flex items-center gap-2">
                                 <Flame className="w-5 h-5 text-[var(--primary-accent)]" />
-                                <span className="text-2xl font-black text-white font-mono">4</span>
+                                <span className="text-2xl font-black text-white font-mono">{prediction.currentStreak || 0}</span>
                                 <span className="text-[12px] font-bold text-[var(--text-muted)] uppercase">days</span>
                             </div>
                         </div>
                         <div className="flex gap-1.5 justify-between">
-                            {Array.from({ length: 30 }).map((_, i) => (
-                                <div key={i} className={`flex-1 h-1.5 rounded-full ${i < 24 ? (i % 5 === 0 ? 'bg-[var(--status-danger)]' : 'bg-[var(--status-safe)]') : 'bg-[rgba(255,255,255,0.05)]'}`} />
+                            {[...Array(30 - (prediction.timeline?.length || 0)).fill(null), ...(prediction.timeline || [])].map((status, i) => (
+                                <div key={i} className={`flex-1 h-1.5 rounded-full transition-all duration-500 ${
+                                    status === 'present' ? 'bg-[var(--status-safe)] shadow-[0_0_8px_rgba(76,175,125,0.4)]' : 
+                                    status === 'absent' ? 'bg-[var(--status-danger)] shadow-[0_0_8px_rgba(232,92,92,0.4)]' : 
+                                    'bg-[rgba(255,255,255,0.05)]'}`} 
+                                />
                             ))}
                         </div>
                         <p className="text-[10px] font-black tracking-widest text-right text-[var(--text-muted)] uppercase mt-3">Last 30 classes</p>
