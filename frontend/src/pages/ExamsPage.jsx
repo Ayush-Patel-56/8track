@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { GraduationCap, Plus, Trash2, X, Award } from 'lucide-react';
+import { format } from 'date-fns';
 import api from '../lib/api';
 import { useToast } from '../components/common/Toast';
 
@@ -15,6 +16,8 @@ export default function ExamsPage() {
         subjectId: '',
         marksObtained: '',
         maxMarks: '',
+        status: 'completed',
+        date: new Date().toISOString().slice(0, 16) // format for datetime-local
     });
 
     // ── Queries ──
@@ -48,7 +51,14 @@ export default function ExamsPage() {
 
     // ── Handlers ──
     const openModal = () => {
-        setFormData({ examName: '', subjectId: subjects[0]?._id || '', marksObtained: '', maxMarks: '' });
+        setFormData({ 
+            examName: '', 
+            subjectId: subjects[0]?._id || '', 
+            marksObtained: '', 
+            maxMarks: '', 
+            status: 'completed',
+            date: new Date().toISOString().slice(0, 16)
+        });
         setIsAddModalOpen(true);
     };
 
@@ -58,20 +68,33 @@ export default function ExamsPage() {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        const obtained = Number(formData.marksObtained);
-        const max = Number(formData.maxMarks);
+        const isCompleted = formData.status === 'completed';
 
-        if (obtained > max) {
-            showToast('Obtained marks cannot be greater than maximum marks', 'error');
-            return;
+        if (isCompleted) {
+            const obtained = Number(formData.marksObtained);
+            const max = Number(formData.maxMarks);
+
+            if (obtained > max) {
+                showToast('Obtained marks cannot be greater than maximum marks', 'error');
+                return;
+            }
+
+            createMutation.mutate({
+                examName: formData.examName,
+                subjectId: formData.subjectId,
+                marksObtained: obtained,
+                maxMarks: max,
+                status: 'completed',
+                date: formData.date
+            });
+        } else {
+            createMutation.mutate({
+                examName: formData.examName,
+                subjectId: formData.subjectId,
+                status: 'upcoming',
+                date: formData.date
+            });
         }
-
-        createMutation.mutate({
-            examName: formData.examName,
-            subjectId: formData.subjectId,
-            marksObtained: obtained,
-            maxMarks: max,
-        });
     };
 
     // ── Group Exams by Exam Name ──
@@ -182,16 +205,33 @@ export default function ExamsPage() {
                                         {records.map(record => (
                                             <tr key={record._id} className="group hover:bg-white/5 transition-colors">
                                                 <td className="px-5 py-3.5">
-                                                    <span className="text-sm font-semibold text-white">
-                                                        {record.subjectId?.name || 'Deleted Subject'}
-                                                    </span>
+                                                    <div className="flex flex-col">
+                                                        <span className="text-sm font-semibold text-white">
+                                                            {record.subjectId?.name || 'Deleted Subject'}
+                                                        </span>
+                                                        <span className="text-[10px] font-bold uppercase tracking-wider mt-0.5 opacity-40">
+                                                            {format(new Date(record.date), 'MMM dd, yyyy • hh:mm a')}
+                                                        </span>
+                                                    </div>
                                                 </td>
                                                 <td className="px-5 py-3.5 text-right">
-                                                    <span className="text-sm font-bold text-white">{record.marksObtained}</span>
-                                                    <span className="text-xs" style={{ color: 'hsl(240 5% 50%)' }}> / {record.maxMarks}</span>
+                                                    {record.status === 'upcoming' ? (
+                                                        <span className="px-2 py-0.5 rounded text-[9px] font-black tracking-widest bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                                                            UPCOMING
+                                                        </span>
+                                                    ) : (
+                                                        <>
+                                                            <span className="text-sm font-bold text-white">{record.marksObtained}</span>
+                                                            <span className="text-xs" style={{ color: 'hsl(240 5% 50%)' }}> / {record.maxMarks}</span>
+                                                        </>
+                                                    )}
                                                 </td>
                                                 <td className="px-5 py-3.5 text-right">
-                                                    <span className="text-sm font-semibold" style={{ color: 'hsl(43 96% 56%)' }}>{record.percentage}%</span>
+                                                    {record.status === 'upcoming' ? (
+                                                        <span className="text-sm font-semibold text-white/10">—</span>
+                                                    ) : (
+                                                        <span className="text-sm font-semibold" style={{ color: 'hsl(43 96% 56%)' }}>{record.percentage}%</span>
+                                                    )}
                                                 </td>
                                                 <td className="px-5 py-3.5 text-right">
                                                     <button
@@ -200,7 +240,7 @@ export default function ExamsPage() {
                                                                 deleteMutation.mutate(record._id);
                                                             }
                                                         }}
-                                                        className="p-1.5 rounded opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500/20 text-red-400"
+                                                        className="p-1.5 rounded opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500/20 text-red-500"
                                                     >
                                                         <Trash2 className="w-4 h-4" />
                                                     </button>
@@ -222,39 +262,54 @@ export default function ExamsPage() {
                         style={{ background: 'hsl(240 10% 9%)', border: '1px solid hsl(240 6% 15%)' }}>
                         
                         <div className="flex items-center justify-between p-5 border-b" style={{ borderColor: 'hsl(240 6% 15%)' }}>
-                            <h3 className="text-lg font-bold text-white">Log Exam Result</h3>
+                            <h3 className="text-lg font-bold text-white">
+                                {formData.status === 'upcoming' ? 'Schedule Upcoming Exam' : 'Log Exam Result'}
+                            </h3>
                             <button onClick={closeModal} className="p-1 rounded-lg hover:bg-white/5 transition-colors">
                                 <X className="w-5 h-5" style={{ color: 'hsl(240 5% 50%)' }} />
                             </button>
                         </div>
 
                         <form onSubmit={handleSubmit} className="p-5 space-y-4">
-                            <div>
-                                <label className="block text-xs font-semibold mb-1.5" style={{ color: 'hsl(240 5% 70%)' }}>
-                                    Exam Series Name <span className="text-red-400">*</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    required
-                                    value={formData.examName}
-                                    onChange={(e) => setFormData({ ...formData, examName: e.target.value })}
-                                    placeholder="e.g. Midterm 1, Final Exam"
-                                    className="w-full px-4 py-2.5 rounded-lg text-sm bg-black/20 border text-white transition-colors focus:outline-none"
-                                    style={{ borderColor: 'hsl(240 6% 20%)' }}
-                                    onFocus={(e) => e.target.style.borderColor = 'hsl(43 96% 56%)'}
-                                    onBlur={(e) => e.target.style.borderColor = 'hsl(240 6% 20%)'}
-                                />
-                                <p className="text-xs mt-1.5" style={{ color: 'hsl(240 5% 45%)' }}>
-                                    Use the exact same name across subjects to group them together.
-                                </p>
+                            {/* Status Toggle */}
+                            <div className="flex p-1 rounded-xl bg-black/40 border" style={{ borderColor: 'hsl(240 6% 15%)' }}>
+                                <button
+                                    type="button"
+                                    onClick={() => setFormData({ ...formData, status: 'completed' })}
+                                    className={`flex-1 py-2 rounded-lg text-xs font-black transition-all ${formData.status === 'completed' ? 'bg-yellow-500 text-black shadow-lg shadow-yellow-500/20' : 'text-white/40 hover:text-white'}`}
+                                >
+                                    RESULT / GRADE
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setFormData({ ...formData, status: 'upcoming' })}
+                                    className={`flex-1 py-2 rounded-lg text-xs font-black transition-all ${formData.status === 'upcoming' ? 'bg-yellow-500 text-black shadow-lg shadow-yellow-500/20' : 'text-white/40 hover:text-white'}`}
+                                >
+                                    UPCOMING / SCHEDULE
+                                </button>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="col-span-2">
+                                    <label className="block text-xs font-black uppercase tracking-widest mb-1.5 opacity-40 ml-1">Exam Series Name*</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        value={formData.examName}
+                                        onChange={(e) => setFormData({ ...formData, examName: e.target.value })}
+                                        placeholder="e.g. Midterm 1, Final Exam"
+                                        className="w-full px-4 py-2.5 rounded-xl text-sm bg-black/20 border text-white transition-all focus:outline-none"
+                                        style={{ borderColor: 'hsl(240 6% 20%)' }}
+                                        onFocus={(e) => e.target.style.borderColor = 'hsl(43 96% 56%)'}
+                                        onBlur={(e) => e.target.style.borderColor = 'hsl(240 6% 20%)'}
+                                    />
+                                </div>
                             </div>
 
                             <div>
-                                <label className="block text-xs font-semibold mb-1.5" style={{ color: 'hsl(240 5% 70%)' }}>
-                                    Subject <span className="text-red-400">*</span>
-                                </label>
+                                <label className="block text-xs font-black uppercase tracking-widest mb-1.5 opacity-40 ml-1">Subject*</label>
                                 {subjects.length === 0 ? (
-                                    <div className="text-xs text-red-400 p-2 bg-red-400/10 rounded border border-red-400/20">
+                                    <div className="text-xs text-red-400 p-3 bg-red-400/10 rounded-xl border border-red-400/20">
                                         Please create a Subject first on the Subjects page.
                                     </div>
                                 ) : (
@@ -262,7 +317,7 @@ export default function ExamsPage() {
                                         required
                                         value={formData.subjectId}
                                         onChange={(e) => setFormData({ ...formData, subjectId: e.target.value })}
-                                        className="w-full px-4 py-2.5 rounded-lg text-sm bg-black/20 border text-white transition-colors focus:outline-none"
+                                        className="w-full px-4 py-2.5 rounded-xl text-sm bg-black/20 border text-white transition-all focus:outline-none"
                                         style={{ borderColor: 'hsl(240 6% 20%)' }}
                                         onFocus={(e) => e.target.style.borderColor = 'hsl(43 96% 56%)'}
                                         onBlur={(e) => e.target.style.borderColor = 'hsl(240 6% 20%)'}
@@ -275,49 +330,60 @@ export default function ExamsPage() {
                                 )}
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-semibold mb-1.5" style={{ color: 'hsl(240 5% 70%)' }}>
-                                        Marks Obtained <span className="text-red-400">*</span>
-                                    </label>
-                                    <input
-                                        type="number"
-                                        required
-                                        min="0"
-                                        max={formData.maxMarks || ""}
-                                        step="0.5"
-                                        value={formData.marksObtained}
-                                        onChange={(e) => setFormData({ ...formData, marksObtained: e.target.value })}
-                                        className="w-full px-4 py-2.5 rounded-lg text-sm bg-black/20 border text-white transition-colors focus:outline-none"
-                                        style={{ borderColor: 'hsl(240 6% 20%)' }}
-                                        onFocus={(e) => e.target.style.borderColor = 'hsl(43 96% 56%)'}
-                                        onBlur={(e) => e.target.style.borderColor = 'hsl(240 6% 20%)'}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-semibold mb-1.5" style={{ color: 'hsl(240 5% 70%)' }}>
-                                        Max Marks <span className="text-red-400">*</span>
-                                    </label>
-                                    <input
-                                        type="number"
-                                        required
-                                        min="1"
-                                        step="1"
-                                        value={formData.maxMarks}
-                                        onChange={(e) => setFormData({ ...formData, maxMarks: e.target.value })}
-                                        className="w-full px-4 py-2.5 rounded-lg text-sm bg-black/20 border text-white transition-colors focus:outline-none"
-                                        style={{ borderColor: 'hsl(240 6% 20%)' }}
-                                        onFocus={(e) => e.target.style.borderColor = 'hsl(43 96% 56%)'}
-                                        onBlur={(e) => e.target.style.borderColor = 'hsl(240 6% 20%)'}
-                                    />
-                                </div>
+                            <div>
+                                <label className="block text-xs font-black uppercase tracking-widest mb-1.5 opacity-40 ml-1">Date & Time*</label>
+                                <input
+                                    type="datetime-local"
+                                    required
+                                    value={formData.date}
+                                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                                    className="w-full px-4 py-2.5 rounded-xl text-sm bg-black/20 border text-white transition-all focus:outline-none"
+                                    style={{ borderColor: 'hsl(240 6% 20%)' }}
+                                    onFocus={(e) => e.target.style.borderColor = 'hsl(43 96% 56%)'}
+                                    onBlur={(e) => e.target.style.borderColor = 'hsl(240 6% 20%)'}
+                                />
                             </div>
+
+                            {formData.status === 'completed' && (
+                                <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                                    <div>
+                                        <label className="block text-xs font-black uppercase tracking-widest mb-1.5 opacity-40 ml-1">Marks Obtained*</label>
+                                        <input
+                                            type="number"
+                                            required
+                                            min="0"
+                                            step="0.5"
+                                            value={formData.marksObtained}
+                                            onChange={(e) => setFormData({ ...formData, marksObtained: e.target.value })}
+                                            className="w-full px-4 py-2.5 rounded-xl text-sm bg-black/20 border text-white transition-all focus:outline-none"
+                                            style={{ borderColor: 'hsl(240 6% 20%)' }}
+                                            onFocus={(e) => e.target.style.borderColor = 'hsl(43 96% 56%)'}
+                                            onBlur={(e) => e.target.style.borderColor = 'hsl(240 6% 20%)'}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-black uppercase tracking-widest mb-1.5 opacity-40 ml-1">Max Marks*</label>
+                                        <input
+                                            type="number"
+                                            required
+                                            min="1"
+                                            step="1"
+                                            value={formData.maxMarks}
+                                            onChange={(e) => setFormData({ ...formData, maxMarks: e.target.value })}
+                                            className="w-full px-4 py-2.5 rounded-xl text-sm bg-black/20 border text-white transition-all focus:outline-none"
+                                            style={{ borderColor: 'hsl(240 6% 20%)' }}
+                                            onFocus={(e) => e.target.style.borderColor = 'hsl(43 96% 56%)'}
+                                            onBlur={(e) => e.target.style.borderColor = 'hsl(240 6% 20%)'}
+                                        />
+                                    </div>
+                                </div>
+                            )}
 
                             <div className="pt-2 flex gap-3">
                                 <button
                                     type="button"
                                     onClick={closeModal}
-                                    className="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-colors hover:bg-white/5"
+                                    className="flex-1 py-3 rounded-xl text-sm font-bold transition-all hover:bg-white/5"
                                     style={{ color: 'hsl(240 5% 60%)' }}
                                 >
                                     Cancel
@@ -325,10 +391,10 @@ export default function ExamsPage() {
                                 <button
                                     type="submit"
                                     disabled={createMutation.isPending || subjects.length === 0}
-                                    className="flex-1 py-2.5 rounded-lg text-sm font-bold transition-transform active:scale-95 disabled:opacity-50"
+                                    className="flex-1 py-3 rounded-xl text-sm font-black transition-all active:scale-95 disabled:opacity-50"
                                     style={{ background: 'hsl(43 96% 56%)', color: 'hsl(240 5.9% 10%)' }}
                                 >
-                                    {createMutation.isPending ? 'Saving...' : 'Save Result'}
+                                    {createMutation.isPending ? 'Processing...' : (formData.status === 'upcoming' ? 'Schedule Exam' : 'Save Result')}
                                 </button>
                             </div>
                         </form>

@@ -323,11 +323,17 @@ export default function DashboardPage() {
         queryFn: () => api.get('/attendance').then(r => r.data.history || r.data),
     });
 
+    const { data: exams = [] } = useQuery({
+        queryKey: ['exams'],
+        queryFn: () => api.get('/exams').then(r => r.data.exams || r.data),
+    });
+
     const markMutation = useMutation({
         mutationFn: ({ subjectId, status }) =>
             api.post('/attendance/mark', { subjectId, status, date: new Date().toISOString() }),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['subjects'] });
+            queryClient.invalidateQueries({ queryKey: ['global-attendance'] });
             queryClient.invalidateQueries({ queryKey: ['notifications'] });
         },
         onError: (err) => showToast(err.response?.data?.message || 'Failed to mark attendance', 'error'),
@@ -341,14 +347,22 @@ export default function DashboardPage() {
         return !isComp;
     }).length;
 
-    // Find Next Exam (Assignment with "Exam" or "Test" in title, or look for upcoming assignment)
-    const nextExam = [...assignments]
+    // Find Next Exam from Exams collection
+    const nextExamRecord = [...exams]
+        .filter(e => e.status === 'upcoming' && e.date && isFuture(new Date(e.date)))
+        .sort((a, b) => new Date(a.date) - new Date(b.date))[0];
+
+    // Fallback to assignments if no upcoming exams record found
+    const nextExam = nextExamRecord || [...assignments]
         .filter(t => {
             const isActive = t.status !== 'completed' && !t.completed;
             const isExam = t.title?.toLowerCase().includes('exam') || t.title?.toLowerCase().includes('test');
             return isActive && isExam && t.dueDate && isFuture(parseISO(t.dueDate));
         })
         .sort((a, b) => parseISO(a.dueDate) - parseISO(b.dueDate))[0];
+
+    const nextExamDate = nextExamRecord ? nextExamRecord.date : (nextExam ? (nextExam.dueDate || nextExam.date) : null);
+    const nextExamTitle = nextExamRecord ? `${nextExamRecord.examName} (${nextExamRecord.subjectId?.name || 'Exam'})` : (nextExam ? nextExam.title : 'No upcoming exams');
 
     const avgPct = subjects.length
         ? Math.round(subjects.reduce((s, sub) => s + (sub.percentage || 0), 0) / subjects.length)
@@ -419,11 +433,12 @@ export default function DashboardPage() {
                     accent="var(--primary-accent)"
                     sub="Tasks & Assignments"
                 />
+
                 <StatCard
                     label="Next Exam"
-                    value={nextExam ? formatCountdown(nextExam.dueDate) : '—'}
+                    value={nextExamDate ? formatCountdown(nextExamDate) : '—'}
                     accent="var(--secondary-accent)"
-                    sub={nextExam ? nextExam.title : 'No upcoming exams'}
+                    sub={nextExamTitle}
                 />
             </div>
 
