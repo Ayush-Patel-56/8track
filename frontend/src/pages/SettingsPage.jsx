@@ -6,7 +6,7 @@ import {
     Trash2, Check, Clock, Info, 
     AlertTriangle, XCircle, CheckCircle, 
     Flame, Calendar, MoreHorizontal,
-    Search, Filter, CheckCheck
+    Search, Filter, CheckCheck, FileText, Scale
 } from 'lucide-react';
 import { format, formatDistanceToNow, isToday, isYesterday } from 'date-fns';
 import api from '../lib/api';
@@ -135,6 +135,8 @@ export default function SettingsPage() {
         { id: 'profile', icon: User, label: 'Profile' },
         { id: 'notifications', icon: Bell, label: 'Notifications' },
         { id: 'security', icon: Shield, label: 'Security' },
+        { id: 'privacy', icon: FileText, label: 'Privacy Policies' },
+        { id: 'terms', icon: Scale, label: 'Terms & Conditions' },
     ];
 
     return (
@@ -348,6 +350,88 @@ export default function SettingsPage() {
                                          <p className="text-[11px] font-medium text-[var(--text-muted)]">Currently Disabled</p>
                                      </div>
                                      <button className="px-4 py-2 rounded-lg bg-[var(--primary-accent)] text-[var(--sidebar-bg)] text-[11px] font-black uppercase tracking-widest">Enable</button>
+                                 </div>
+                             </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'privacy' && (
+                        <div className="p-10 text-center space-y-4">
+                             <FileText className="w-16 h-16 text-[var(--primary-accent)] mx-auto opacity-20" />
+                             <h3 className="text-xl font-bold text-white">Privacy Policies</h3>
+                             <p className="text-sm font-medium text-[var(--text-muted)] mb-8">How we handle and protect your data</p>
+                             <div className="max-w-md mx-auto space-y-4">
+                                 <div className="p-6 rounded-3xl bg-[rgba(255,255,255,0.01)] border border-[var(--active-highlight)] text-left space-y-4">
+                                     <div className="flex items-center gap-3">
+                                         <Calendar className="w-5 h-5 text-blue-400" />
+                                         <p className="text-sm font-bold text-white">Google Calendar API Usage</p>
+                                     </div>
+                                     <div className="space-y-3 text-[12px] font-medium text-[var(--text-muted)] leading-relaxed">
+                                         <div>
+                                            <span className="text-white/80 font-bold block mb-0.5">Data Collected</span>
+                                            We link your Google Calendar Account to sync events. We do not access or collect any other Google data.
+                                         </div>
+                                         <div>
+                                            <span className="text-white/80 font-bold block mb-0.5">Purpose of Collection</span>
+                                            This data is collected specifically to show your upcoming assignments, exams, and classes directly within the 8Track dashboard.
+                                         </div>
+                                         <div>
+                                            <span className="text-white/80 font-bold block mb-0.5">Data Storage</span>
+                                            Tokens and calendar data are processed temporarily for syncing. They are protected with industry-standard encryption, and refresh tokens are kept secure.
+                                         </div>
+                                         <div>
+                                            <span className="text-white/80 font-bold block mb-0.5">Data Deletion</span>
+                                            You can remove access at any time by unlinking your Google Account from your Google Account Security settings, or by contacting our admin to delete your 8Track account.
+                                         </div>
+                                     </div>
+                                 </div>
+                             </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'terms' && (
+                        <div className="p-10 text-center space-y-4">
+                             <Scale className="w-16 h-16 text-[var(--primary-accent)] mx-auto opacity-20" />
+                             <h3 className="text-xl font-bold text-white">Terms of Service</h3>
+                             <p className="text-sm font-medium text-[var(--text-muted)] mb-8">Application rules and user agreements</p>
+                             <div className="max-w-2xl mx-auto space-y-4">
+                                 <div className="p-8 rounded-3xl bg-[rgba(255,255,255,0.01)] border border-[var(--active-highlight)] text-left space-y-6">
+                                     <div className="border-b border-white/5 pb-4">
+                                        <p className="text-xs font-bold text-[var(--primary-accent)] uppercase tracking-widest mb-1">Effective Date: {format(new Date(), 'MMMM d, yyyy')}</p>
+                                        <h4 className="text-lg font-bold text-white">Welcome to 8Track.</h4>
+                                        <p className="text-[12px] font-medium text-[var(--text-muted)] mt-2">By using this application, you agree to the following terms:</p>
+                                     </div>
+
+                                     <div className="space-y-5 text-[12px] font-medium text-[var(--text-muted)] leading-relaxed">
+                                         <div>
+                                            <span className="text-white font-bold block mb-1 text-[13px]">1. Use of Service</span>
+                                            This app is intended for personal productivity, including task management, Pomodoro tracking, and calendar integration.
+                                         </div>
+                                         <div>
+                                            <span className="text-white font-bold block mb-1 text-[13px]">2. User Responsibilities</span>
+                                            You are responsible for maintaining the confidentiality of your account and ensuring that your usage complies with applicable laws.
+                                         </div>
+                                         <div>
+                                            <span className="text-white font-bold block mb-1 text-[13px]">3. Google Calendar Integration</span>
+                                            If you connect your Google account, we may create calendar events on your behalf. We do not access or modify your calendar beyond what is necessary for this functionality.
+                                         </div>
+                                         <div>
+                                            <span className="text-white font-bold block mb-1 text-[13px]">4. Data Usage</span>
+                                            We store your data securely and do not sell or share your personal data with third parties.
+                                         </div>
+                                         <div>
+                                            <span className="text-white font-bold block mb-1 text-[13px]">5. Limitation of Liability</span>
+                                            We are not responsible for any data loss, missed reminders, or service interruptions.
+                                         </div>
+                                         <div>
+                                            <span className="text-white font-bold block mb-1 text-[13px]">6. Changes to Terms</span>
+                                            We may update these terms from time to time.
+                                         </div>
+                                         <div className="pt-4 border-t border-white/5">
+                                            <span className="text-white font-bold block mb-1 text-[13px]">7. Contact</span>
+                                            For support, contact: <a href="mailto:hriturajroy3@gmail.com" className="text-[var(--primary-accent)] hover:underline">hriturajroy3@gmail.com</a>
+                                         </div>
+                                     </div>
                                  </div>
                              </div>
                         </div>
