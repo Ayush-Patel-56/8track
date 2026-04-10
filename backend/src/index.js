@@ -23,7 +23,16 @@ const MONGO_URI = process.env.MONGO_URI || "";
 // ── Middleware ────────────────────────────────────────────────────────────────
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:5173",
+    origin: (origin, callback) => {
+      const allowed = [
+        process.env.FRONTEND_URL || "http://localhost:5173",
+        "https://8track-nine.vercel.app",
+        "http://localhost:5173",
+      ];
+      // Allow requests with no origin (e.g. curl, mobile apps)
+      if (!origin || allowed.includes(origin)) return callback(null, true);
+      return callback(new Error(`CORS: origin ${origin} not allowed`));
+    },
     credentials: true,
   }),
 );
