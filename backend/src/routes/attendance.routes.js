@@ -1,6 +1,6 @@
-const express = require('express');
-const { markAttendance, getGlobalAttendance, getAttendanceHistory, updateAttendance, deleteAttendance } = require('../controllers/attendanceController');
-const { protect } = require('../middleware/auth');
+import express from 'express';
+import { markAttendance, getGlobalAttendance, getAttendanceHistory, updateAttendance, deleteAttendance  } from '../controllers/attendanceController.js';
+import { protect  } from '../middleware/auth.js';
 
 const router = express.Router();
 router.use(protect);
@@ -11,4 +11,4 @@ router.get('/:subjectId', getAttendanceHistory);
 router.put('/:id', updateAttendance);
 router.delete('/:id', deleteAttendance);
 
-module.exports = router;
+export default router;

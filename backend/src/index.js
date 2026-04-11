@@ -1,20 +1,22 @@
-const express = require("express");
-const mongoose = require("mongoose");
-const cookieParser = require("cookie-parser");
-const cors = require("cors");
-require("dotenv").config();
+import express from 'express';
+import mongoose from 'mongoose';
+import cookieParser from 'cookie-parser';
+import cors from 'cors';
+import dotenv from 'dotenv';
+dotenv.config();
 
-const authRoutes = require("./routes/auth.routes");
-const subjectRoutes = require("./routes/subject.routes");
-const attendanceRoutes = require("./routes/attendance.routes");
-const assignmentRoutes = require("./routes/assignment.routes");
-const taskRoutes = require("./routes/task.routes");
-const examRoutes = require("./routes/exam.routes");
-const pushRoutes = require("./routes/push.routes");
-const scheduleRoutes = require("./routes/schedule.routes");
-const googleRoutes = require("./routes/google.routes");
-const notificationRoutes = require("./routes/notification.routes");
-const errorHandler = require("./middleware/errorHandler");
+import authRoutes from './routes/auth.routes.js';
+import subjectRoutes from './routes/subject.routes.js';
+import attendanceRoutes from './routes/attendance.routes.js';
+import assignmentRoutes from './routes/assignment.routes.js';
+import taskRoutes from './routes/task.routes.js';
+import examRoutes from './routes/exam.routes.js';
+import pushRoutes from './routes/push.routes.js';
+import scheduleRoutes from './routes/schedule.routes.js';
+import googleRoutes from './routes/google.routes.js';
+import notificationRoutes from './routes/notification.routes.js';
+import errorHandler from './middleware/errorHandler.js';
+import { fileURLToPath } from 'url';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -65,13 +67,16 @@ app.use((req, res) => {
 app.use(errorHandler);
 
 // ── Start server ──────────────────────────────────────────────────────────────
-if (require.main === module || process.env.NODE_ENV !== 'production') {
+
+const isMainModule = process.argv[1] === fileURLToPath(import.meta.url);
+
+if (isMainModule || process.env.NODE_ENV !== 'production') {
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
   });
 }
 
-module.exports = app;
+export default app;
 
 // ── MongoDB connection ────────────────────────────────────────────────────────
 mongoose

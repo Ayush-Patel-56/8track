@@ -1,6 +1,6 @@
-const express = require('express');
-const { getSchedule, addSlot, deleteSlot, toggleHoliday } = require('../controllers/scheduleController');
-const { protect } = require('../middleware/auth');
+import express from 'express';
+import { getSchedule, addSlot, deleteSlot, toggleHoliday  } from '../controllers/scheduleController.js';
+import { protect  } from '../middleware/auth.js';
 
 const router = express.Router();
 router.use(protect);
@@ -10,4 +10,4 @@ router.post('/:day/slots', addSlot);
 router.delete('/:day/slots/:slotId', deleteSlot);
 router.patch('/:day/holiday', toggleHoliday);
 
-module.exports = router;
+export default router;

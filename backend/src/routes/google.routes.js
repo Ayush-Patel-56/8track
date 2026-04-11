@@ -1,13 +1,12 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const { protect } = require('../middleware/auth');
-const {
-    getAuthUrl,
+import { protect  } from '../middleware/auth.js';
+import { getAuthUrl,
     handleCallback,
     getStatus,
     disconnect,
     syncSchedule,
-} = require('../controllers/googleCalendarController');
+ } from '../controllers/googleCalendarController.js';
 
 // Public callback route (Google redirects here – no JWT header in browser redirect)
 router.get('/callback', handleCallback);
@@ -20,4 +19,4 @@ router.get('/status', getStatus);
 router.delete('/disconnect', disconnect);
 router.post('/sync', syncSchedule);
 
-module.exports = router;
+export default router;

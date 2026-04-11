@@ -2,6 +2,7 @@
   "name": "8track-backend",
   "version": "1.0.0",
   "description": "8Track Academic Management System - Backend API",
+  "type": "module",
   "main": "dist/index.js",
   "scripts": {
     "dev": "nodemon",

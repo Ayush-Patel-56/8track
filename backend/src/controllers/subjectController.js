@@ -1,7 +1,7 @@
-const Subject = require('../models/Subject');
-const Attendance = require('../models/Attendance');
-const Assignment = require('../models/Assignment');
-const Exam = require('../models/Exam');
+import Subject from '../models/Subject.js';
+import Attendance from '../models/Attendance.js';
+import Assignment from '../models/Assignment.js';
+import Exam from '../models/Exam.js';
 
 const getSubjects = async (req, res, next) => {
     try {
@@ -64,4 +64,4 @@ const deleteSubject = async (req, res, next) => {
     }
 };
 
-module.exports = { getSubjects, createSubject, updateSubject, deleteSubject };
+export {  getSubjects, createSubject, updateSubject, deleteSubject  };

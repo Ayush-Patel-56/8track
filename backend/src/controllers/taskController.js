@@ -1,4 +1,4 @@
-const Task = require('../models/Task');
+import Task from '../models/Task.js';
 
 const getTasks = async (req, res, next) => {
     try {
@@ -44,4 +44,4 @@ const deleteTask = async (req, res, next) => {
     }
 };
 
-module.exports = { getTasks, createTask, updateTask, deleteTask };
+export {  getTasks, createTask, updateTask, deleteTask  };

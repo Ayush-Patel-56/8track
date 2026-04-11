@@ -1,4 +1,4 @@
-const Exam = require('../models/Exam');
+import Exam from '../models/Exam.js';
 
 const getExams = async (req, res, next) => {
     try {
@@ -60,4 +60,4 @@ const deleteExam = async (req, res, next) => {
     }
 };
 
-module.exports = { getExams, createExam, deleteExam };
+export {  getExams, createExam, deleteExam  };

@@ -1,4 +1,4 @@
-const nodemailer = require('nodemailer');
+import nodemailer from 'nodemailer';
 
 const transporter = nodemailer.createTransport({
     service: 'gmail',
@@ -42,4 +42,4 @@ const sendOtpEmail = async (to, otp) => {
     await transporter.sendMail(mailOptions);
 };
 
-module.exports = { sendOtpEmail };
+export {  sendOtpEmail  };

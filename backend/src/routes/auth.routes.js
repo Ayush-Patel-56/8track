@@ -1,6 +1,6 @@
-const express = require('express');
-const { register, login, refreshToken, logout, getProfile, updateProfile, sendOtp, verifyOtpAndRegister, googleAuthUrl, googleCallback } = require('../controllers/authController');
-const { protect } = require('../middleware/auth');
+import express from 'express';
+import { register, login, refreshToken, logout, getProfile, updateProfile, sendOtp, verifyOtpAndRegister, googleAuthUrl, googleCallback  } from '../controllers/authController.js';
+import { protect  } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -17,4 +17,4 @@ router.put('/profile', protect, updateProfile);
 router.get('/google', googleAuthUrl);
 router.get('/google/callback', googleCallback);
 
-module.exports = router;
+export default router;

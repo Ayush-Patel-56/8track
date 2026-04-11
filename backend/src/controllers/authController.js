@@ -1,9 +1,9 @@
-const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');
-const { google } = require('googleapis');
-const User = require('../models/User');
-const Otp = require('../models/OTP');
-const { sendOtpEmail } = require('../utils/emailService');
+import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
+import { google  } from 'googleapis';
+import User from '../models/User.js';
+import Otp from '../models/OTP.js';
+import { sendOtpEmail  } from '../utils/emailService.js';
 
 const generateAccessToken = (id) =>
     jwt.sign({ id }, process.env.JWT_ACCESS_SECRET, {
@@ -371,4 +371,4 @@ const googleCallback = async (req, res, next) => {
     }
 };
 
-module.exports = { register, login, refreshToken, logout, getProfile, updateProfile, sendOtp, verifyOtpAndRegister, googleAuthUrl, googleCallback };
+export {  register, login, refreshToken, logout, getProfile, updateProfile, sendOtp, verifyOtpAndRegister, googleAuthUrl, googleCallback  };

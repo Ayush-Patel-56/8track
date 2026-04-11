@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const ExamSchema = new mongoose.Schema(
     {
@@ -26,4 +26,4 @@ ExamSchema.pre('save', function (next) {
 
 ExamSchema.index({ userId: 1, date: -1 });
 
-module.exports = mongoose.model('Exam', ExamSchema);
+export default mongoose.model('Exam', ExamSchema);

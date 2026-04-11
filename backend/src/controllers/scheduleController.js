@@ -1,4 +1,4 @@
-const Schedule = require('../models/Schedule');
+import Schedule from '../models/Schedule.js';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -81,4 +81,4 @@ const toggleHoliday = async (req, res, next) => {
     }
 };
 
-module.exports = { getSchedule, addSlot, deleteSlot, toggleHoliday };
+export {  getSchedule, addSlot, deleteSlot, toggleHoliday  };

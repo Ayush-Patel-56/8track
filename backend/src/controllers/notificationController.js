@@ -1,6 +1,6 @@
-const webpush = require('web-push');
-const Notification = require('../models/Notification');
-const User = require('../models/User');
+import webpush from 'web-push';
+import Notification from '../models/Notification.js';
+import User from '../models/User.js';
 
 // Initialize VAPID
 const isValidVapidKey = (key) => key && key !== 'placeholder' && key.length > 20;
@@ -95,11 +95,11 @@ const createNotification = async (userId, title, message, type = 'info', link = 
     }
 };
 
-module.exports = { 
+export {  
     getNotifications, 
     markAsRead, 
     markAllAsRead, 
     deleteNotification, 
     clearHistory,
     createNotification
-};
+ };

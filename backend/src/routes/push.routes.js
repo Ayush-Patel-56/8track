@@ -1,6 +1,6 @@
-const express = require('express');
-const { saveSubscription, sendTestNotification, unsubscribePush } = require('../controllers/pushController');
-const { protect } = require('../middleware/auth');
+import express from 'express';
+import { saveSubscription, sendTestNotification, unsubscribePush  } from '../controllers/pushController.js';
+import { protect  } from '../middleware/auth.js';
 
 const router = express.Router();
 router.use(protect);
@@ -8,4 +8,4 @@ router.post('/subscribe', saveSubscription);
 router.delete('/unsubscribe', unsubscribePush);
 router.post('/test', sendTestNotification);
 
-module.exports = router;
+export default router;

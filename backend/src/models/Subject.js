@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const SubjectSchema = new mongoose.Schema(
     {
@@ -24,4 +24,4 @@ const SubjectSchema = new mongoose.Schema(
 // One subject name per user
 SubjectSchema.index({ userId: 1, name: 1 }, { unique: true });
 
-module.exports = mongoose.model('Subject', SubjectSchema);
+export default mongoose.model('Subject', SubjectSchema);

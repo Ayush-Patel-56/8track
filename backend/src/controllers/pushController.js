@@ -1,6 +1,6 @@
-const webpush = require('web-push');
-const User = require('../models/User');
-const { createNotification } = require('./notificationController');
+import webpush from 'web-push';
+import User from '../models/User.js';
+import { createNotification  } from './notificationController.js';
 
 // Initialize VAPID on module load
 const isValidVapidKey = (key) => key && key !== 'placeholder' && key.length > 20;
@@ -49,4 +49,4 @@ const unsubscribePush = async (req, res, next) => {
     }
 };
 
-module.exports = { saveSubscription, sendTestNotification, unsubscribePush };
+export {  saveSubscription, sendTestNotification, unsubscribePush  };

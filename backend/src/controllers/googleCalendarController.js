@@ -1,6 +1,6 @@
-const { google } = require('googleapis');
-const User = require('../models/User');
-const Schedule = require('../models/Schedule');
+import { google  } from 'googleapis';
+import User from '../models/User.js';
+import Schedule from '../models/Schedule.js';
 
 // ── Day name to RRule BYDAY code ─────────────────────────────────────────────
 const DAY_TO_RRULE = {
@@ -192,4 +192,4 @@ const syncSchedule = async (req, res) => {
     }
 };
 
-module.exports = { getAuthUrl, handleCallback, getStatus, disconnect, syncSchedule };
+export {  getAuthUrl, handleCallback, getStatus, disconnect, syncSchedule  };

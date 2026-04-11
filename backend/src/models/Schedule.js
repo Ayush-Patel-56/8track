@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const SlotSchema = new mongoose.Schema({
     subjectName: { type: String, required: true, trim: true },
@@ -21,4 +21,4 @@ const DayScheduleSchema = new mongoose.Schema({
 // One document per user per day
 DayScheduleSchema.index({ userId: 1, day: 1 }, { unique: true });
 
-module.exports = mongoose.model('Schedule', DayScheduleSchema);
+export default mongoose.model('Schedule', DayScheduleSchema);

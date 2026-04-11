@@ -1,7 +1,7 @@
-const Attendance = require('../models/Attendance');
-const Subject = require('../models/Subject');
-const { calcPercentage, calcStatus, safeToMiss, recoveryNeeded } = require('../utils/prediction');
-const { createNotification } = require('./notificationController');
+import Attendance from '../models/Attendance.js';
+import Subject from '../models/Subject.js';
+import { calcPercentage, calcStatus, safeToMiss, recoveryNeeded  } from '../utils/prediction.js';
+import { createNotification  } from './notificationController.js';
 
 const markAttendance = async (req, res, next) => {
     let { subjectId, status, date } = req.body;
@@ -176,4 +176,4 @@ const getGlobalAttendance = async (req, res, next) => {
     }
 };
 
-module.exports = { markAttendance, getAttendanceHistory, updateAttendance, deleteAttendance, getGlobalAttendance };
+export {  markAttendance, getAttendanceHistory, updateAttendance, deleteAttendance, getGlobalAttendance  };

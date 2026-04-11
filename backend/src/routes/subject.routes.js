@@ -1,6 +1,6 @@
-const express = require('express');
-const { getSubjects, createSubject, updateSubject, deleteSubject } = require('../controllers/subjectController');
-const { protect } = require('../middleware/auth');
+import express from 'express';
+import { getSubjects, createSubject, updateSubject, deleteSubject  } from '../controllers/subjectController.js';
+import { protect  } from '../middleware/auth.js';
 
 const router = express.Router();
 router.use(protect);
@@ -9,4 +9,4 @@ router.post('/', createSubject);
 router.put('/:id', updateSubject);
 router.delete('/:id', deleteSubject);
 
-module.exports = router;
+export default router;

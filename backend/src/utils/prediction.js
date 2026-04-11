@@ -38,4 +38,4 @@ function calcStatus(percentage) {
     return 'danger';
 }
 
-module.exports = { safeToMiss, recoveryNeeded, calcPercentage, calcStatus };
+export {  safeToMiss, recoveryNeeded, calcPercentage, calcStatus  };
