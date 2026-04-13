@@ -1,5 +1,5 @@
 // 8Track Service Worker
-const CACHE_NAME = '8track-v1';
+const CACHE_NAME = '8track-v2';
 const STATIC_ASSETS = [
     '/',
     '/index.html',
@@ -56,8 +56,13 @@ self.addEventListener('fetch', (event) => {
                 })
             )
         );
+    } else if (event.request.mode === 'navigate') {
+        // Network-first for HTML pages so we always get the latest Vite build from Vercel!
+        event.respondWith(
+            fetch(event.request).catch(() => caches.match('/index.html'))
+        );
     } else {
-        // Cache-first for static assets
+        // Cache-first for static assets (images, js, css)
         event.respondWith(
             caches.match(event.request).then((cached) => cached || fetch(event.request))
         );
@@ -76,8 +81,8 @@ self.addEventListener('push', (event) => {
     event.waitUntil(
         self.registration.showNotification(data.title, {
             body: data.body,
-            icon: '/icon-192.png',
-            badge: '/icon-192.png',
+            icon: '/8_Track_logo.png',
+            badge: '/8_Track_logo.png',
             vibrate: [200, 100, 200],
             data: data,
         })
