@@ -28,10 +28,8 @@ app.use(
     origin: (origin, callback) => {
       const allowed = [
         process.env.FRONTEND_URL || "http://localhost:5173",
-        "https://8track-nine.vercel.app",
         "https://personify.cloud",
         "https://www.personify.cloud",
-        "http://localhost:5173",
       ];
       // Allow requests with no origin (e.g. curl, mobile apps)
       if (!origin || allowed.includes(origin)) return callback(null, true);
