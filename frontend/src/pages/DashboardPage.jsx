@@ -338,14 +338,21 @@ export default function DashboardPage() {
     });
 
     const markMutation = useMutation({
-        mutationFn: ({ subjectId, status }) =>
-            api.post('/attendance/mark', { subjectId, status, date: new Date().toISOString() }),
+        mutationFn: ({ subjectId, status }) => {
+            // Enforcement: Ensure subject is scheduled for today
+            const isScheduled = scheduledSubjects.some(s => s._id === subjectId);
+            if (!isScheduled) {
+                return Promise.reject(new Error('You can only mark attendance for subjects scheduled for today.'));
+            }
+            return api.post('/attendance/mark', { subjectId, status, date: new Date().toISOString() });
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['subjects'] });
             queryClient.invalidateQueries({ queryKey: ['global-attendance'] });
             queryClient.invalidateQueries({ queryKey: ['notifications'] });
+            showToast('Attendance marked successfully!', 'success');
         },
-        onError: (err) => showToast(err.response?.data?.message || 'Failed to mark attendance', 'error'),
+        onError: (err) => showToast(err.message || err.response?.data?.message || 'Failed to mark attendance', 'error'),
     });
 
     const currentStreak = useMemo(() => calculateStreak(attendanceHistory), [attendanceHistory]);
@@ -384,6 +391,18 @@ export default function DashboardPage() {
     
     const todaysSchedule = scheduleData?.find(d => d.day === currentDayName);
 
+    const scheduledSubjects = useMemo(() => {
+        if (!todaysSchedule || todaysSchedule.isHoliday || !todaysSchedule.slots?.length) {
+            return [];
+        }
+        // Use normalized names for matching
+        const scheduledNames = new Set(
+            todaysSchedule.slots.map(s => s.subjectName.toLowerCase().trim())
+        );
+        return subjects.filter(sub => 
+            scheduledNames.has(sub.name.toLowerCase().trim())
+        );
+    }, [subjects, todaysSchedule]);
     return (
         <div className="space-y-8 pb-10 relative">
             {/* ── Top Row: Greeting + Streak ── */}
