@@ -4,7 +4,7 @@ import { calcPercentage, calcStatus, safeToMiss, recoveryNeeded  } from '../util
 import { createNotification  } from './notificationController.js';
 
 const markAttendance = async (req, res, next) => {
-    let { subjectId, status, date } = req.body;
+    let { subjectId, status, date, startTime } = req.body;
     if (!subjectId) {
         return res.status(400).json({ message: 'subjectId is required' });
     }
@@ -14,19 +14,25 @@ const markAttendance = async (req, res, next) => {
     }
 
     try {
-        const subject = await Subject.findOne({ _id: subjectId, userId: req.user.id });
+        const subject = await Subject.findOne({ _id: subjectId, userId: req.user._id });
         if (!subject) return res.status(404).json({ message: 'Subject not found' });
 
         const targetDate = date ? new Date(date) : new Date();
         const startOfDay = new Date(targetDate.setHours(0, 0, 0, 0));
         const endOfDay = new Date(targetDate.setHours(23, 59, 59, 999));
 
-        // Check if attendance already marked for this day
-        let attendance = await Attendance.findOne({
-            userId: req.user.id,
+        // Check if attendance already marked for this day and specific slot
+        const query = {
+            userId: req.user._id,
             subjectId,
             date: { $gte: startOfDay, $lte: endOfDay }
-        });
+        };
+        
+        if (startTime) {
+            query.startTime = startTime;
+        }
+
+        let attendance = await Attendance.findOne(query);
 
         const oldStatusForSubject = subject.status;
 
@@ -44,9 +50,10 @@ const markAttendance = async (req, res, next) => {
         } else {
             // CREATE NEW RECORD
             attendance = await Attendance.create({
-                userId: req.user.id,
+                userId: req.user._id,
                 subjectId,
                 date: date || new Date(),
+                startTime,
                 status,
             });
 
@@ -64,12 +71,12 @@ const markAttendance = async (req, res, next) => {
             let title = 'Attendance Status Changed';
             let message = `Your attendance status for ${subject.name} has changed to ${subject.status.toUpperCase()}.`;
             let type = subject.status === 'safe' ? 'success' : subject.status === 'warning' ? 'warning' : 'attendance';
-            await createNotification(req.user.id, title, message, type, `/attendance/${subject._id}`);
+            await createNotification(req.user._id, title, message, type, `/attendance/${subject._id}`);
         } else if (status === 'absent' && subject.status === 'danger') {
-             await createNotification(req.user.id, 'Critical Attendance', `You missed a class for ${subject.name} while already in DANGER zone!`, 'error', `/attendance/${subject._id}`);
+             await createNotification(req.user._id, 'Critical Attendance', `You missed a class for ${subject.name} while already in DANGER zone!`, 'error', `/attendance/${subject._id}`);
         }
 
-        const history = await Attendance.find({ userId: req.user.id, subjectId }).sort({ date: -1 });
+        const history = await Attendance.find({ userId: req.user._id, subjectId }).sort({ date: -1 });
         let currentStreak = 0;
         for (const record of history) {
             if (record.status === 'present') currentStreak++;
@@ -93,7 +100,7 @@ const markAttendance = async (req, res, next) => {
 const getAttendanceHistory = async (req, res, next) => {
     const { subjectId } = req.params;
     try {
-        const history = await Attendance.find({ userId: req.user.id, subjectId }).sort({ date: -1 });
+        const history = await Attendance.find({ userId: req.user._id, subjectId }).sort({ date: -1 });
         const subject = await Subject.findById(subjectId);
         
         // Calculate Streak and Timeline
@@ -125,7 +132,7 @@ const updateAttendance = async (req, res, next) => {
         status = 'absent';
     }
     try {
-        const record = await Attendance.findOne({ _id: req.params.id, userId: req.user.id });
+        const record = await Attendance.findOne({ _id: req.params.id, userId: req.user._id });
         if (!record) return res.status(404).json({ message: 'Record not found' });
 
         const oldStatus = record.status;
@@ -149,7 +156,7 @@ const updateAttendance = async (req, res, next) => {
 
 const deleteAttendance = async (req, res, next) => {
     try {
-        const record = await Attendance.findOneAndDelete({ _id: req.params.id, userId: req.user.id });
+        const record = await Attendance.findOneAndDelete({ _id: req.params.id, userId: req.user._id });
         if (!record) return res.status(404).json({ message: 'Record not found' });
 
         const subject = await Subject.findById(record.subjectId);
@@ -169,7 +176,7 @@ const deleteAttendance = async (req, res, next) => {
 
 const getGlobalAttendance = async (req, res, next) => {
     try {
-        const history = await Attendance.find({ userId: req.user.id }).sort({ date: -1 });
+        const history = await Attendance.find({ userId: req.user._id }).sort({ date: -1 });
         res.json({ history });
     } catch (err) {
         next(err);
