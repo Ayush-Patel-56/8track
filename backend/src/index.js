@@ -3,6 +3,7 @@ import express from 'express';
 import mongoose from 'mongoose';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
+import morgan from 'morgan';
 
 import authRoutes from './routes/auth.routes.js';
 import subjectRoutes from './routes/subject.routes.js';
@@ -39,6 +40,7 @@ app.use(
 );
 app.use(express.json());
 app.use(cookieParser());
+app.use(morgan('dev'));
 
 // ── Routes ────────────────────────────────────────────────────────────────────
 app.use("/api/auth", authRoutes);
