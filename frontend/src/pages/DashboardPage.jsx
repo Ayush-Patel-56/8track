@@ -232,19 +232,27 @@ function TodaysClasses({ dayData, isLoading }) {
     );
 }
 
-// ─── Subject Attendance Row ───────────────────────────────────────────────────
-function SubjectRow({ subject, color, onMark }) {
-    const pct = subject.percentage ?? 0;
-    const status = subject.status || 'danger';
+// ─── Slot Attendance Row ───────────────────────────────────────────────────
+function SlotRow({ slot, color, onMark }) {
+    const subject = slot.subject;
+    const pct = subject?.percentage ?? 0;
+    const status = subject?.status || 'danger';
     const st = STATUS_STYLE[status] || STATUS_STYLE.danger;
 
     return (
         <tr className="border-b border-[var(--active-highlight)] last:border-0 hover:bg-[rgba(255,255,255,0.02)] transition-colors group">
             <td className="py-5 pr-4 pl-2">
-                <Link to={`/attendance/${subject._id}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color, boxShadow: `0 0 8px ${color}` }} />
-                    <span className="text-[14px] font-bold text-white tracking-tight">{subject.name}</span>
-                </Link>
+                <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-2">
+                         <span className="text-[10px] font-mono font-bold text-[var(--primary-accent)] bg-[rgba(232,168,56,0.1)] px-1.5 py-0.5 rounded">
+                            {slot.startTime}
+                        </span>
+                        <Link to={subject ? `/attendance/${subject._id}` : '#'} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                            <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: color, boxShadow: `0 0 8px ${color}` }} />
+                            <span className="text-[14px] font-bold text-white tracking-tight">{slot.subjectName}</span>
+                        </Link>
+                    </div>
+                </div>
             </td>
             <td className="py-5 pr-8" style={{ minWidth: 180 }}>
                 <div className="flex items-center gap-4">
@@ -257,22 +265,26 @@ function SubjectRow({ subject, color, onMark }) {
             </td>
             <td className="py-5 pr-8">
                 <span className="px-3 py-1 rounded-lg text-[10px] font-black tracking-widest uppercase shadow-sm"
-                    style={{ color: st.color, background: st.bg, border: `1px solid ${st.color}20` }}>
-                    {st.label}
+                    style={{ 
+                        color: slot.attendanceStatus === 'present' ? 'var(--status-safe)' : slot.attendanceStatus === 'absent' ? 'var(--status-danger)' : st.color, 
+                        background: slot.attendanceStatus === 'present' ? 'rgba(76, 175, 80, 0.1)' : slot.attendanceStatus === 'absent' ? 'rgba(232, 92, 92, 0.1)' : st.bg, 
+                        border: `1px solid ${slot.attendanceStatus === 'present' ? 'rgba(76, 175, 80, 0.2)' : slot.attendanceStatus === 'absent' ? 'rgba(232, 92, 92, 0.2)' : st.color + '20'}` 
+                    }}>
+                    {slot.attendanceStatus ? slot.attendanceStatus.toUpperCase() : st.label}
                 </span>
             </td>
             <td className="py-5 pr-2">
                 <div className="flex gap-2">
                     <button
-                        onClick={() => onMark(subject._id, 'present')}
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold transition-all bg-[var(--active-highlight)] border border-[rgba(255,255,255,0.05)] hover:border-[var(--status-safe)] hover:text-[var(--status-safe)]"
+                        onClick={() => subject && onMark(subject._id, 'present', slot.startTime)}
+                        className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold transition-all border ${slot.attendanceStatus === 'present' ? 'bg-[var(--status-safe)] text-[var(--sidebar-bg)] border-[var(--status-safe)]' : 'bg-[var(--active-highlight)] border-[rgba(255,255,255,0.05)] hover:border-[var(--status-safe)] hover:text-[var(--status-safe)]'}`}
                     >
                         <Plus className="w-3 h-3" />
                         Present
                     </button>
                     <button
-                        onClick={() => onMark(subject._id, 'absent')}
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold transition-all bg-[var(--active-highlight)] border border-[rgba(255,255,255,0.05)] hover:border-[var(--status-danger)] hover:text-[var(--status-danger)]"
+                        onClick={() => subject && onMark(subject._id, 'absent', slot.startTime)}
+                        className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold transition-all border ${slot.attendanceStatus === 'absent' ? 'bg-[var(--status-danger)] text-white border-[var(--status-danger)]' : 'bg-[var(--active-highlight)] border-[rgba(255,255,255,0.05)] hover:border-[var(--status-danger)] hover:text-[var(--status-danger)]'}`}
                     >
                         <Plus className="w-3 h-3" />
                         Absent
@@ -293,18 +305,27 @@ export default function DashboardPage() {
 
     const { data: subjects = [], isLoading } = useQuery({
         queryKey: ['subjects'],
-        queryFn: () => api.get('/subjects').then(r => r.data.subjects || r.data),
+        queryFn: () => api.get('/subjects').then(r => {
+            const raw = r.data.subjects || r.data;
+            return Array.isArray(raw) ? raw : [];
+        }),
         retry: 1,
     });
 
     const { data: assignments = [] } = useQuery({
         queryKey: ['assignments'],
-        queryFn: () => api.get('/assignments').then(r => r.data.assignments || r.data),
+        queryFn: () => api.get('/assignments').then(r => {
+            const raw = r.data.assignments || r.data;
+            return Array.isArray(raw) ? raw : [];
+        }),
     });
 
     const { data: tasks = [] } = useQuery({
         queryKey: ['tasks'],
-        queryFn: () => api.get('/tasks').then(r => r.data.tasks || r.data),
+        queryFn: () => api.get('/tasks').then(r => {
+            const raw = r.data.tasks || r.data;
+            return Array.isArray(raw) ? raw : [];
+        }),
     });
 
     const { data: scheduleData, isLoading: scheduleLoading } = useQuery({
@@ -314,23 +335,36 @@ export default function DashboardPage() {
 
     const { data: attendanceHistory = [] } = useQuery({
         queryKey: ['global-attendance'],
-        queryFn: () => api.get('/attendance').then(r => r.data.history || r.data),
+        queryFn: () => api.get('/attendance').then(r => {
+            const raw = r.data.history || r.data;
+            return Array.isArray(raw) ? raw : [];
+        }),
     });
 
     const { data: exams = [] } = useQuery({
         queryKey: ['exams'],
-        queryFn: () => api.get('/exams').then(r => r.data.exams || r.data),
+        queryFn: () => api.get('/exams').then(r => {
+            const raw = r.data.exams || r.data;
+            return Array.isArray(raw) ? raw : [];
+        }),
     });
 
     const markMutation = useMutation({
-        mutationFn: ({ subjectId, status }) =>
-            api.post('/attendance/mark', { subjectId, status, date: new Date().toISOString() }),
+        mutationFn: ({ subjectId, status, startTime }) => {
+            // Enforcement: Ensure subject is scheduled for today (slot-level check)
+            const isScheduled = attendanceSlots.some(s => s.subject?._id === subjectId && s.startTime === startTime);
+            if (!isScheduled) {
+                return Promise.reject(new Error('You can only mark attendance for subjects scheduled for today.'));
+            }
+            return api.post('/attendance/mark', { subjectId, status, startTime, date: new Date().toISOString() });
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['subjects'] });
             queryClient.invalidateQueries({ queryKey: ['global-attendance'] });
             queryClient.invalidateQueries({ queryKey: ['notifications'] });
+            showToast('Attendance marked successfully!', 'success');
         },
-        onError: (err) => showToast(err.response?.data?.message || 'Failed to mark attendance', 'error'),
+        onError: (err) => showToast(err.message || err.response?.data?.message || 'Failed to mark attendance', 'error'),
     });
 
     const currentStreak = useMemo(() => calculateStreak(attendanceHistory), [attendanceHistory]);
@@ -369,6 +403,34 @@ export default function DashboardPage() {
     
     const todaysSchedule = scheduleData?.find(d => d.day === currentDayName);
 
+    const attendanceSlots = useMemo(() => {
+        if (!todaysSchedule || todaysSchedule.isHoliday || !todaysSchedule.slots?.length) {
+            return [];
+        }
+
+        const todayStr = format(new Date(), 'yyyy-MM-dd');
+
+        return todaysSchedule.slots.map(slot => {
+            const subject = subjects.find(sub => 
+                sub.name.toLowerCase().trim() === slot.subjectName.toLowerCase().trim()
+            );
+            
+            // Find attendance for this specific slot
+            const attendance = attendanceHistory.find(att => {
+                const attDate = format(new Date(att.date), 'yyyy-MM-dd');
+                const matchesSubject = att.subjectId === subject?._id || att.subjectId?._id === subject?._id;
+                return matchesSubject && 
+                       attDate === todayStr && 
+                       att.startTime === slot.startTime;
+            });
+
+            return {
+                ...slot,
+                subject,
+                attendanceStatus: attendance?.status || null
+            };
+        }).sort((a, b) => a.startTime.localeCompare(b.startTime));
+    }, [subjects, todaysSchedule, attendanceHistory]);
     return (
         <div className="space-y-8 pb-10 relative">
             {/* ── Top Row: Greeting + Streak ── */}
@@ -441,8 +503,8 @@ export default function DashboardPage() {
                 <div className="rounded-3xl p-8 border border-[var(--active-highlight)]"
                     style={{ background: 'var(--card-bg)' }}>
                     <div className="flex items-center justify-between mb-8">
-                        <h2 className="text-lg font-bold text-white tracking-tight">Subject Attendance</h2>
-                        {subjects.length > 5 && (
+                        <h2 className="text-lg font-bold text-white tracking-tight">Today's Attendance</h2>
+                        {attendanceSlots.length > 5 && (
                             <button 
                                 onClick={() => setIsExpanded(!isExpanded)}
                                 className="flex items-center gap-2 text-xs font-black tracking-widest uppercase text-[var(--primary-accent)] hover:underline"
@@ -453,29 +515,38 @@ export default function DashboardPage() {
                         )}
                     </div>
 
-                    {isLoading ? (
-                        <div className="py-20 text-center text-sm font-medium text-[var(--text-muted)] animate-pulse">Loading subjects...</div>
-                    ) : subjects.length === 0 ? (
+                    {isLoading || scheduleLoading ? (
+                        <div className="py-20 text-center text-sm font-medium text-[var(--text-muted)] animate-pulse">Loading schedule...</div>
+                    ) : attendanceSlots.length === 0 ? (
                         <div className="py-20 text-center bg-[rgba(255,255,255,0.01)] rounded-2xl border border-dashed border-[var(--active-highlight)]">
-                            <p className="text-sm font-bold text-white mb-2 tracking-tight">No subjects found</p>
-                            <p className="text-xs text-[var(--text-muted)] font-medium">Add subjects to start tracking attendance.</p>
+                            <p className="text-sm font-bold text-white mb-2 tracking-tight">
+                                {todaysSchedule?.isHoliday ? "It's a holiday!" : "No classes scheduled for today"}
+                            </p>
+                            <p className="text-xs text-[var(--text-muted)] font-medium mb-6">
+                                {todaysSchedule?.isHoliday ? "Take a rest and enjoy your day." : "You can manage your weekly schedule in Subjects."}
+                            </p>
+                            {!todaysSchedule?.isHoliday && (
+                                <Link to="/subjects" className="px-5 py-2 rounded-xl text-xs font-bold transition-all hover:bg-[var(--active-highlight)] border border-[var(--active-highlight)] text-[var(--primary-accent)]">
+                                    Set Schedule
+                                </Link>
+                            )}
                         </div>
                     ) : (
                         <table className="w-full">
                             <thead>
                                 <tr className="border-b border-[var(--active-highlight)]">
-                                    {['Subject', 'Progress', 'Status', 'Actions'].map(h => (
+                                    {['Time & Subject', 'Progress', 'Status', 'Actions'].map(h => (
                                         <th key={h} className="pb-4 text-left text-[11px] font-black tracking-[0.2em] text-[var(--text-muted)] uppercase">{h}</th>
                                     ))}
                                 </tr>
                             </thead>
                             <tbody>
-                                {subjects.slice(0, isExpanded ? subjects.length : 5).map((sub, i) => (
-                                    <SubjectRow
-                                        key={sub._id}
-                                        subject={sub}
+                                {attendanceSlots.slice(0, isExpanded ? attendanceSlots.length : 5).map((slot, i) => (
+                                    <SlotRow
+                                        key={slot._id || `${slot.subjectName}-${slot.startTime}`}
+                                        slot={slot}
                                         color={SUBJECT_COLORS[i % SUBJECT_COLORS.length]}
-                                        onMark={(subjectId, status) => markMutation.mutate({ subjectId, status })}
+                                        onMark={(subjectId, status, startTime) => markMutation.mutate({ subjectId, status, startTime })}
                                     />
                                 ))}
                             </tbody>
