@@ -20,6 +20,9 @@
 - bcryptjs (Password Hashing)
 - Helmet & Express Rate Limit (Security)
 
+**Database**
+-MongoDB
+
 **Deployment Infrastructure**
 - Monorepo structure setup for **Vercel**
 - Backend runs as Vercel Serverless Functions
