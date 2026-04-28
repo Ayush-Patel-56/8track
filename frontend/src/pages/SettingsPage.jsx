@@ -6,7 +6,8 @@ import {
     Trash2, Check, Clock, Info, 
     AlertTriangle, XCircle, CheckCircle, 
     Flame, Calendar, MoreHorizontal,
-    Search, Filter, CheckCheck, FileText, Scale
+    Search, Filter, CheckCheck, FileText, Scale,
+    Edit2, Save, X
 } from 'lucide-react';
 import { format, formatDistanceToNow, isToday, isYesterday } from 'date-fns';
 import api from '../lib/api';
@@ -34,6 +35,31 @@ export default function SettingsPage() {
     const { showToast } = useToast();
     const [searchQuery, setSearchQuery] = useState('');
     const [filter, setFilter] = useState('all'); // all, read, unread
+    
+    // Profile Edit States
+    const [isEditing, setIsEditing] = useState(false);
+    const [formData, setFormData] = useState({
+        name: user?.name || '',
+        institution: user?.institution || '',
+        dob: user?.dob ? format(new Date(user.dob), 'yyyy-MM-dd') : ''
+    });
+
+    const updateProfileMutation = useMutation({
+        mutationFn: (data) => api.put('/auth/profile', data),
+        onSuccess: (res) => {
+            updateUser(res.data.user);
+            setIsEditing(false);
+            showToast('Profile updated successfully', 'success');
+        },
+        onError: (err) => {
+            showToast(err.response?.data?.message || 'Failed to update profile', 'error');
+        }
+    });
+
+    const handleProfileSubmit = (e) => {
+        e.preventDefault();
+        updateProfileMutation.mutate(formData);
+    };
 
     const urlBase64ToUint8Array = (base64String) => {
         const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -314,26 +340,121 @@ export default function SettingsPage() {
                     )}
 
                     {activeTab === 'profile' && (
-                        <div className="p-10 flex flex-col items-center justify-center text-center space-y-6">
-                            <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-[var(--primary-accent)] shadow-2xl">
-                                 <img 
-                                    src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.name || 'User'}`} 
-                                    alt="Avatar" 
-                                    className="w-full h-full object-cover"
-                                />
-                            </div>
-                            <div className="space-y-1">
-                                <h3 className="text-2xl font-black text-white">{user?.name}</h3>
-                                <p className="text-[var(--text-muted)] font-medium">{user?.email}</p>
-                            </div>
-                            <div className="w-full max-w-md pt-6 space-y-4">
-                                <div className="p-5 rounded-[24px] bg-[rgba(255,255,255,0.02)] border border-white/5 text-left">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] mb-2">Member Since</p>
-                                    <p className="text-sm font-bold text-white">{format(new Date(), 'MMMM yyyy')}</p>
+                        <div className="p-10 space-y-8">
+                            <div className="flex flex-col items-center justify-center text-center space-y-6">
+                                <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-[var(--primary-accent)] shadow-2xl relative group">
+                                     <img 
+                                        src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.name || 'User'}`} 
+                                        alt="Avatar" 
+                                        className="w-full h-full object-cover"
+                                    />
                                 </div>
-                                <button disabled className="w-full py-4 rounded-xl bg-[var(--active-highlight)] text-[var(--text-muted)] font-bold opacity-50 cursor-not-allowed">
-                                    Update Profile (Coming Soon)
-                                </button>
+                                <div className="space-y-1">
+                                    <h3 className="text-2xl font-black text-white">{user?.name}</h3>
+                                    <p className="text-[var(--text-muted)] font-medium">{user?.email}</p>
+                                </div>
+                            </div>
+
+                            <div className="max-w-xl mx-auto w-full">
+                                {!isEditing ? (
+                                    <div className="space-y-6">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="p-6 rounded-3xl bg-[rgba(255,255,255,0.02)] border border-white/5 space-y-1">
+                                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)]">Full Name</p>
+                                                <p className="text-sm font-bold text-white">{user?.name || 'Not set'}</p>
+                                            </div>
+                                            <div className="p-6 rounded-3xl bg-[rgba(255,255,255,0.02)] border border-white/5 space-y-1">
+                                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)]">Institution</p>
+                                                <p className="text-sm font-bold text-white">{user?.institution || 'Not set'}</p>
+                                            </div>
+                                            <div className="p-6 rounded-3xl bg-[rgba(255,255,255,0.02)] border border-white/5 space-y-1">
+                                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)]">Date of Birth</p>
+                                                <p className="text-sm font-bold text-white">
+                                                    {user?.dob ? format(new Date(user.dob), 'dd MMMM yyyy') : 'Not set'}
+                                                </p>
+                                            </div>
+                                            <div className="p-6 rounded-3xl bg-[rgba(255,255,255,0.02)] border border-white/5 space-y-1">
+                                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)]">Member Since</p>
+                                                <p className="text-sm font-bold text-white">
+                                                    {user?.createdAt ? format(new Date(user.createdAt), 'MMMM yyyy') : 'Recently'}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <button 
+                                            onClick={() => {
+                                                setFormData({
+                                                    name: user?.name || '',
+                                                    institution: user?.institution || '',
+                                                    dob: user?.dob ? format(new Date(user.dob), 'yyyy-MM-dd') : ''
+                                                });
+                                                setIsEditing(true);
+                                            }}
+                                            className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl bg-[var(--active-highlight)] hover:bg-[var(--primary-accent)] hover:text-[var(--sidebar-bg)] text-white font-bold transition-all group"
+                                        >
+                                            <Edit2 className="w-4 h-4 transition-transform group-hover:scale-110" />
+                                            Edit Profile
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <form onSubmit={handleProfileSubmit} className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                        <div className="space-y-4">
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] ml-1">Full Name</label>
+                                                <input 
+                                                    type="text"
+                                                    value={formData.name}
+                                                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                                                    className="w-full px-6 py-4 rounded-2xl bg-[rgba(255,255,255,0.03)] border border-white/5 text-white font-bold focus:outline-none focus:border-[var(--primary-accent)] transition-all"
+                                                    placeholder="Enter your name"
+                                                    required
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] ml-1">Institution</label>
+                                                <input 
+                                                    type="text"
+                                                    value={formData.institution}
+                                                    onChange={(e) => setFormData({...formData, institution: e.target.value})}
+                                                    className="w-full px-6 py-4 rounded-2xl bg-[rgba(255,255,255,0.03)] border border-white/5 text-white font-bold focus:outline-none focus:border-[var(--primary-accent)] transition-all"
+                                                    placeholder="Enter your college/university"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] ml-1">Date of Birth</label>
+                                                <input 
+                                                    type="date"
+                                                    value={formData.dob}
+                                                    onChange={(e) => setFormData({...formData, dob: e.target.value})}
+                                                    className="w-full px-6 py-4 rounded-2xl bg-[rgba(255,255,255,0.03)] border border-white/5 text-white font-bold focus:outline-none focus:border-[var(--primary-accent)] transition-all [color-scheme:dark]"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="flex gap-4 pt-2">
+                                            <button 
+                                                type="button"
+                                                onClick={() => setIsEditing(false)}
+                                                className="flex-1 py-4 rounded-2xl border border-white/5 text-[var(--text-muted)] font-bold hover:bg-white/5 transition-all"
+                                            >
+                                                Cancel
+                                            </button>
+                                            <button 
+                                                type="submit"
+                                                disabled={updateProfileMutation.isPending}
+                                                className="flex-[2] flex items-center justify-center gap-2 py-4 rounded-2xl bg-[var(--primary-accent)] text-[var(--sidebar-bg)] font-black uppercase tracking-widest hover:opacity-90 transition-all disabled:opacity-50"
+                                            >
+                                                {updateProfileMutation.isPending ? (
+                                                    <Clock className="w-4 h-4 animate-spin" />
+                                                ) : (
+                                                    <>
+                                                        <Save className="w-4 h-4" />
+                                                        Save Changes
+                                                    </>
+                                                )}
+                                            </button>
+                                        </div>
+                                    </form>
+                                )}
                             </div>
                         </div>
                     )}

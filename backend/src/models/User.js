@@ -10,6 +10,7 @@ const UserSchema = new mongoose.Schema(
         institution: { type: String, trim: true },
         branch: { type: String, trim: true },
         semester: { type: String, trim: true },
+        dob: { type: Date },
         pushSubscription: { type: Object },
         refreshToken: { type: String },
         googleTokens: {
