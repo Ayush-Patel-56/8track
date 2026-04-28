@@ -41,7 +41,9 @@ export default function SettingsPage() {
     const [formData, setFormData] = useState({
         name: user?.name || '',
         institution: user?.institution || '',
-        dob: user?.dob ? format(new Date(user.dob), 'yyyy-MM-dd') : ''
+        dob: user?.dob ? format(new Date(user.dob), 'yyyy-MM-dd') : '',
+        phone: user?.phone || '',
+        semester: user?.semester || ''
     });
 
     const updateProfileMutation = useMutation({
@@ -374,6 +376,14 @@ export default function SettingsPage() {
                                                 </p>
                                             </div>
                                             <div className="p-6 rounded-3xl bg-[rgba(255,255,255,0.02)] border border-white/5 space-y-1">
+                                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)]">Phone Number</p>
+                                                <p className="text-sm font-bold text-white">{user?.phone || 'Not set'}</p>
+                                            </div>
+                                            <div className="p-6 rounded-3xl bg-[rgba(255,255,255,0.02)] border border-white/5 space-y-1">
+                                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)]">Standard / Semester</p>
+                                                <p className="text-sm font-bold text-white">{user?.semester || 'Not set'}</p>
+                                            </div>
+                                            <div className="p-6 rounded-3xl bg-[rgba(255,255,255,0.02)] border border-white/5 space-y-1">
                                                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)]">Member Since</p>
                                                 <p className="text-sm font-bold text-white">
                                                     {user?.createdAt ? format(new Date(user.createdAt), 'MMMM yyyy') : 'Recently'}
@@ -385,7 +395,9 @@ export default function SettingsPage() {
                                                 setFormData({
                                                     name: user?.name || '',
                                                     institution: user?.institution || '',
-                                                    dob: user?.dob ? format(new Date(user.dob), 'yyyy-MM-dd') : ''
+                                                    dob: user?.dob ? format(new Date(user.dob), 'yyyy-MM-dd') : '',
+                                                    phone: user?.phone || '',
+                                                    semester: user?.semester || ''
                                                 });
                                                 setIsEditing(true);
                                             }}
@@ -427,6 +439,28 @@ export default function SettingsPage() {
                                                     onChange={(e) => setFormData({...formData, dob: e.target.value})}
                                                     className="w-full px-6 py-4 rounded-2xl bg-[rgba(255,255,255,0.03)] border border-white/5 text-white font-bold focus:outline-none focus:border-[var(--primary-accent)] transition-all [color-scheme:dark]"
                                                 />
+                                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] ml-1">Phone Number</label>
+                                                    <input 
+                                                        type="tel"
+                                                        value={formData.phone}
+                                                        onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                                                        className="w-full px-6 py-4 rounded-2xl bg-[rgba(255,255,255,0.03)] border border-white/5 text-white font-bold focus:outline-none focus:border-[var(--primary-accent)] transition-all"
+                                                        placeholder="Enter phone number"
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] ml-1">Standard / Semester</label>
+                                                    <input 
+                                                        type="text"
+                                                        value={formData.semester}
+                                                        onChange={(e) => setFormData({...formData, semester: e.target.value})}
+                                                        className="w-full px-6 py-4 rounded-2xl bg-[rgba(255,255,255,0.03)] border border-white/5 text-white font-bold focus:outline-none focus:border-[var(--primary-accent)] transition-all"
+                                                        placeholder="e.g. 6th Semester, 10th Standard"
+                                                    />
+                                                </div>
                                             </div>
                                         </div>
 

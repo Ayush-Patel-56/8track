@@ -11,6 +11,7 @@ const UserSchema = new mongoose.Schema(
         branch: { type: String, trim: true },
         semester: { type: String, trim: true },
         dob: { type: Date },
+        phone: { type: String, trim: true },
         pushSubscription: { type: Object },
         refreshToken: { type: String },
         googleTokens: {

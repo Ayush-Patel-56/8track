@@ -58,6 +58,7 @@ const register = async (req, res, next) => {
                 branch: user.branch,
                 semester: user.semester,
                 dob: user.dob,
+                phone: user.phone,
             },
         });
     } catch (err) {
@@ -102,6 +103,7 @@ const login = async (req, res, next) => {
                 branch: user.branch,
                 semester: user.semester,
                 dob: user.dob,
+                phone: user.phone,
             },
         });
     } catch (err) {
@@ -166,11 +168,11 @@ const getProfile = async (req, res, next) => {
 
 // Update Profile
 const updateProfile = async (req, res, next) => {
-    const { name, institution, dob } = req.body;
+    const { name, institution, dob, phone, semester } = req.body;
     try {
         const user = await User.findByIdAndUpdate(
             req.user.id,
-            { name, institution, dob },
+            { name, institution, dob, phone, semester },
             { new: true, runValidators: true }
         ).select('-password -refreshToken');
         res.json({ user });
@@ -274,6 +276,7 @@ const verifyOtpAndRegister = async (req, res, next) => {
                 branch: user.branch,
                 semester: user.semester,
                 dob: user.dob,
+                phone: user.phone,
             },
         });
     } catch (err) {
@@ -364,6 +367,7 @@ const googleCallback = async (req, res, next) => {
             branch: user.branch,
             semester: user.semester,
             dob: user.dob,
+            phone: user.phone,
         }));
 
         return res.redirect(
