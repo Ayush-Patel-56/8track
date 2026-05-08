@@ -77,6 +77,12 @@ export default function SettingsPage() {
 
     const handleProfileSubmit = (e) => {
         e.preventDefault();
+        
+        // Frontend validation for DOB
+        if (formData.dob && new Date(formData.dob) > new Date()) {
+            return showToast('Date of Birth cannot be in the future', 'error');
+        }
+
         updateProfileMutation.mutate(formData);
     };
 
@@ -502,6 +508,7 @@ export default function SettingsPage() {
                                                     type="date"
                                                     value={formData.dob}
                                                     onChange={(e) => setFormData({...formData, dob: e.target.value})}
+                                                    max={new Date().toISOString().split('T')[0]}
                                                     className="w-full px-6 py-4 rounded-2xl bg-[rgba(255,255,255,0.03)] border border-white/5 text-white font-bold focus:outline-none focus:border-[var(--primary-accent)] transition-all [color-scheme:dark]"
                                                 />
                                             </div>
