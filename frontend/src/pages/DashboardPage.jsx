@@ -277,14 +277,18 @@ function SlotRow({ slot, color, onMark }) {
                 <div className="flex gap-2">
                     <button
                         onClick={() => subject && onMark(subject._id, 'present', slot.startTime)}
-                        className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold transition-all border ${slot.attendanceStatus === 'present' ? 'bg-[var(--status-safe)] text-[var(--sidebar-bg)] border-[var(--status-safe)]' : 'bg-[var(--active-highlight)] border-[rgba(255,255,255,0.05)] hover:border-[var(--status-safe)] hover:text-[var(--status-safe)]'}`}
+                        disabled={!subject}
+                        className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold transition-all border disabled:opacity-30 disabled:cursor-not-allowed ${slot.attendanceStatus === 'present' ? 'bg-[var(--status-safe)] text-[var(--sidebar-bg)] border-[var(--status-safe)]' : 'bg-[var(--active-highlight)] border-[rgba(255,255,255,0.05)] hover:border-[var(--status-safe)] hover:text-[var(--status-safe)]'}`}
+                        title={!subject ? "Create a subject with this name to mark attendance" : "Mark as Present"}
                     >
                         <Plus className="w-3 h-3" />
                         Present
                     </button>
                     <button
                         onClick={() => subject && onMark(subject._id, 'absent', slot.startTime)}
-                        className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold transition-all border ${slot.attendanceStatus === 'absent' ? 'bg-[var(--status-danger)] text-white border-[var(--status-danger)]' : 'bg-[var(--active-highlight)] border-[rgba(255,255,255,0.05)] hover:border-[var(--status-danger)] hover:text-[var(--status-danger)]'}`}
+                        disabled={!subject}
+                        className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold transition-all border disabled:opacity-30 disabled:cursor-not-allowed ${slot.attendanceStatus === 'absent' ? 'bg-[var(--status-danger)] text-white border-[var(--status-danger)]' : 'bg-[var(--active-highlight)] border-[rgba(255,255,255,0.05)] hover:border-[var(--status-danger)] hover:text-[var(--status-danger)]'}`}
+                        title={!subject ? "Create a subject with this name to mark attendance" : "Mark as Absent"}
                     >
                         <Plus className="w-3 h-3" />
                         Absent
@@ -351,11 +355,6 @@ export default function DashboardPage() {
 
     const markMutation = useMutation({
         mutationFn: ({ subjectId, status, startTime }) => {
-            // Enforcement: Ensure subject is scheduled for today (slot-level check)
-            const isScheduled = attendanceSlots.some(s => s.subject?._id === subjectId && s.startTime === startTime);
-            if (!isScheduled) {
-                return Promise.reject(new Error('You can only mark attendance for subjects scheduled for today.'));
-            }
             return api.post('/attendance/mark', { subjectId, status, startTime, date: new Date().toISOString() });
         },
         onSuccess: () => {

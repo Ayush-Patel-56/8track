@@ -21,6 +21,16 @@ const queryClient = new QueryClient({
 
 function ProtectedRoute({ children }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const _hasHydrated = useAuthStore((s) => s._hasHydrated);
+
+  if (!_hasHydrated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#141416]">
+        <div className="w-8 h-8 border-4 border-[var(--primary-accent)] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return isAuthenticated ? children : <Navigate to="/auth" replace />;
 }
 

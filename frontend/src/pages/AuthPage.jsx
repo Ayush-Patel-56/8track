@@ -187,6 +187,14 @@ function AuthPage() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const setAuth = useAuthStore((s) => s.setAuth);
+    const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+    const _hasHydrated = useAuthStore((s) => s._hasHydrated);
+
+    useEffect(() => {
+        if (_hasHydrated && isAuthenticated) {
+            navigate('/dashboard');
+        }
+    }, [_hasHydrated, isAuthenticated, navigate]);
 
     const { register, handleSubmit, formState: { errors }, reset, watch, getValues } = useForm();
     const password = watch('password', '');
