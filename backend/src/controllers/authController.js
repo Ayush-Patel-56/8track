@@ -18,8 +18,8 @@ const generateRefreshToken = (id) =>
 const setRefreshCookie = (res, token) => {
     res.cookie('refreshToken', token, {
         httpOnly: true,
-        secure: true, // Always secure in modern browsers for cookies like this
-        sameSite: 'lax', // Lax is better for production subdomains
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 };

@@ -1,8 +1,6 @@
-import { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuthStore } from './store/authStore';
-import api from './lib/api';
 import LandingPage from './pages/LandingPage';
 import AuthPage from './pages/AuthPage';
 import PrivacyPage from './pages/PrivacyPage';
@@ -57,46 +55,14 @@ function AppContent() {
 }
 
 export default function App() {
-  const { isAuthenticated, setAccessToken, logout, _hasHydrated } = useAuthStore();
-  const [isInitializing, setIsInitializing] = useState(true);
-
-  useEffect(() => {
-    const initAuth = async () => {
-      if (_hasHydrated && isAuthenticated) {
-        try {
-          const { data } = await api.post('/auth/refresh');
-          setAccessToken(data.accessToken);
-        } catch (error) {
-          console.error("Session restoration failed:", error);
-          logout();
-        }
-      }
-      setIsInitializing(false);
-    };
-
-    if (_hasHydrated) {
-      initAuth();
-    }
-  }, [_hasHydrated, isAuthenticated, setAccessToken, logout]);
-
-  if (!_hasHydrated || isInitializing) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#141416]">
-        <div className="w-8 h-8 border-4 border-[var(--primary-accent)] border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <Router>
+        <BrowserRouter>
           <ToastProvider>
-            <div className="min-h-screen bg-[#141416] text-[#F0EEE8]">
-              <AppContent />
-            </div>
+            <AppContent />
           </ToastProvider>
-        </Router>
+        </BrowserRouter>
       </QueryClientProvider>
     </ErrorBoundary>
   );
