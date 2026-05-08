@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import NotificationDropdown from '../dashboard/NotificationDropdown';
 import { useAuthStore } from '../../store/authStore';
 
@@ -15,13 +16,13 @@ export default function TopBar({ title = 'Dashboard' }) {
             {/* Actions */}
             <div className="flex items-center gap-3">
                 <NotificationDropdown />
-                <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-[var(--active-highlight)] ml-2 cursor-pointer transition-transform hover:scale-105">
+                <Link to="/settings?tab=profile" className="w-10 h-10 rounded-full overflow-hidden border-2 border-[var(--active-highlight)] ml-2 cursor-pointer transition-transform hover:scale-110 hover:border-[var(--primary-accent)] active:scale-95">
                      <img 
                         src={`https://api.dicebear.com/7.x/${user?.avatarStyle || 'avataaars'}/svg?seed=${user?.avatarSeed || user?.name || 'User'}`} 
                         alt="Avatar" 
                         className="w-full h-full object-cover"
                     />
-                </div>
+                </Link>
             </div>
         </header>
     );
