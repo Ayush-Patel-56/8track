@@ -299,6 +299,68 @@ const verifyOtpAndRegister = async (req, res, next) => {
     }
 };
 
+// Forgot Password - Send OTP to existing user
+const forgotPassword = async (req, res, next) => {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ message: 'Email is required' });
+
+    try {
+        const user = await User.findOne({ email: email.toLowerCase() });
+        if (!user) {
+            return res.status(404).json({ message: 'No account found with this email' });
+        }
+
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const otpHash = await bcrypt.hash(otp, 10);
+        const expiresMinutes = parseInt(process.env.OTP_EXPIRES_MINUTES) || 10;
+        const expiresAt = new Date(Date.now() + expiresMinutes * 60 * 1000);
+
+        await Otp.deleteMany({ email: email.toLowerCase() });
+        await Otp.create({
+            email: email.toLowerCase(),
+            otpHash,
+            userData: { type: 'reset' },
+            expiresAt,
+        });
+
+        await sendOtpEmail(email, otp);
+        return res.status(200).json({ message: 'Reset code sent to your email.' });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// Reset Password - Verify OTP and update
+const resetPassword = async (req, res, next) => {
+    const { email, otp, newPassword } = req.body;
+    if (!email || !otp || !newPassword) {
+        return res.status(400).json({ message: 'All fields are required' });
+    }
+
+    try {
+        const record = await Otp.findOne({ email: email.toLowerCase() });
+        if (!record || record.userData?.type !== 'reset') {
+            return res.status(400).json({ message: 'Invalid or expired reset code' });
+        }
+
+        const isMatch = await bcrypt.compare(otp, record.otpHash);
+        if (!isMatch) {
+            return res.status(400).json({ message: 'Invalid reset code' });
+        }
+
+        const user = await User.findOne({ email: email.toLowerCase() });
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        user.password = newPassword;
+        await user.save();
+
+        await Otp.deleteOne({ email: email.toLowerCase() });
+        return res.json({ message: 'Password reset successfully. You can now login.' });
+    } catch (err) {
+        next(err);
+    }
+};
+
 // ─── Google OAuth Login helpers ───────────────────────────────────────────────
 function buildLoginOAuth2Client() {
     return new google.auth.OAuth2(
@@ -399,4 +461,4 @@ const googleCallback = async (req, res, next) => {
     }
 };
 
-export {  register, login, refreshToken, logout, getProfile, updateProfile, sendOtp, verifyOtpAndRegister, googleAuthUrl, googleCallback  };
+export {  register, login, refreshToken, logout, getProfile, updateProfile, sendOtp, verifyOtpAndRegister, googleAuthUrl, googleCallback, forgotPassword, resetPassword  };

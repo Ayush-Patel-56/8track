@@ -184,6 +184,8 @@ function AuthPage() {
     const [otpValues, setOtpValues] = useState(['', '', '', '', '', '']);
     const [resendTimer, setResendTimer] = useState(0);
     const [googleLoading, setGoogleLoading] = useState(false);
+    const [forgotStep, setForgotStep] = useState('none'); // 'none', 'request', 'verify', 'reset'
+    const [resetEmail, setResetEmail] = useState('');
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const setAuth = useAuthStore((s) => s.setAuth);
@@ -198,11 +200,13 @@ function AuthPage() {
 
     const { register, handleSubmit, formState: { errors }, reset, watch, getValues } = useForm();
     const password = watch('password', '');
+    const newPassword = watch('newPassword', '');
+    const effectivePassword = forgotStep === 'reset' ? newPassword : password;
 
-    const isPasswordValid = password.length >= 8 &&
-                            /\d/.test(password) &&
-                            /[A-Z]/.test(password) &&
-                            /[!@#$%^&*(),.?":{}|<>]/.test(password);
+    const isPasswordValid = effectivePassword.length >= 8 &&
+                            /\d/.test(effectivePassword) &&
+                            /[A-Z]/.test(effectivePassword) &&
+                            /[!@#$%^&*(),.?":{}|<>]/.test(effectivePassword);
 
     const loginMutation = useMutation({
         mutationFn: (data) => api.post('/auth/login', data),
@@ -222,6 +226,25 @@ function AuthPage() {
     const verifyOtpMutation = useMutation({
         mutationFn: (data) => api.post('/auth/verify-otp', data),
         onSuccess: ({ data }) => { setAuth(data.user, data.accessToken); navigate('/dashboard'); },
+    });
+
+    const forgotMutation = useMutation({
+        mutationFn: (data) => api.post('/auth/forgot-password', data),
+        onSuccess: (_, vars) => {
+            setResetEmail(vars.email);
+            setForgotStep('verify');
+            setOtpValues(['', '', '', '', '', '']);
+            startResendTimer();
+        }
+    });
+
+    const resetPasswordMutation = useMutation({
+        mutationFn: (data) => api.post('/auth/reset-password', data),
+        onSuccess: () => {
+            setForgotStep('none');
+            setTab('signin');
+            showToast('Password reset successfully. Please login.', 'success');
+        }
     });
 
     const startResendTimer = () => {
@@ -277,14 +300,42 @@ function AuthPage() {
 
     const handleResendOtp = () => {
         if (resendTimer > 0) return;
-        const data = getValues();
-        sendOtpMutation.mutate(data);
+        if (forgotStep === 'verify') {
+            forgotMutation.mutate({ email: resetEmail });
+        } else {
+            const data = getValues();
+            sendOtpMutation.mutate(data);
+        }
     };
 
-    const isLoading = loginMutation.isPending || sendOtpMutation.isPending;
+    const handleForgotVerify = () => {
+        const otp = otpValues.join('');
+        if (otp.length !== 6) return;
+        setForgotStep('reset');
+    };
+
+    const handleResetPassword = (data) => {
+        const otp = otpValues.join('');
+        resetPasswordMutation.mutate({
+            email: resetEmail,
+            otp,
+            newPassword: data.newPassword
+        });
+    };
+
+    const handleStartForgot = () => {
+        loginMutation.reset();
+        sendOtpMutation.reset();
+        verifyOtpMutation.reset();
+        setForgotStep('request');
+    };
+
+    const isLoading = loginMutation.isPending || sendOtpMutation.isPending || forgotMutation.isPending || resetPasswordMutation.isPending;
     const error = loginMutation.error?.response?.data?.message ||
                   sendOtpMutation.error?.response?.data?.message ||
-                  verifyOtpMutation.error?.response?.data?.message;
+                  verifyOtpMutation.error?.response?.data?.message ||
+                  forgotMutation.error?.response?.data?.message ||
+                  resetPasswordMutation.error?.response?.data?.message;
 
     // Map Google OAuth error codes from URL params to user-friendly messages
     const googleErrorParam = searchParams.get('error');
@@ -308,12 +359,15 @@ function AuthPage() {
     const handleTabChange = (newTab) => {
         setTab(newTab);
         setOtpStep(false);
+        setForgotStep('none');
         setPendingEmail('');
         setOtpValues(['', '', '', '', '', '']);
         reset();
         loginMutation.reset();
         sendOtpMutation.reset();
         verifyOtpMutation.reset();
+        forgotMutation.reset();
+        resetPasswordMutation.reset();
     };
 
     // ── Input class helper ──
@@ -366,6 +420,107 @@ function AuthPage() {
 
                 <div className="w-full max-w-sm">
 
+                    {/* ── Forgot Password Flow ── */}
+                    {forgotStep !== 'none' ? (
+                        <div>
+                             <button
+                                type="button"
+                                onClick={() => setForgotStep('none')}
+                                className="flex items-center gap-1.5 text-xs mb-6 transition-colors"
+                                style={{ color: '#6B6B72' }}
+                            >
+                                ← Back to Sign In
+                            </button>
+
+                            {forgotStep === 'request' && (
+                                <>
+                                    <h1 className="text-2xl font-bold text-center mb-1" style={{ color: '#F0EEE8' }}>Reset password</h1>
+                                    <p className="text-sm text-center mb-7" style={{ color: '#6B6B72' }}>Enter your email to receive a reset code.</p>
+                                    <div className="space-y-4">
+                                        <input 
+                                            type="email" 
+                                            placeholder="Email address"
+                                            className={inputCls}
+                                            value={resetEmail}
+                                            onChange={(e) => setResetEmail(e.target.value)}
+                                            style={{ background: '#1C1C1F', border: '1px solid #2A2A30', color: '#F0EEE8' }}
+                                        />
+                                        {error && (
+                                            <div className="px-4 py-2.5 rounded-lg text-sm text-red-400"
+                                                style={{ background: 'hsl(0 72% 51% / 0.1)', border: '1px solid hsl(0 72% 51% / 0.2)' }}>
+                                                {error}
+                                            </div>
+                                        )}
+                                        <button
+                                            onClick={() => forgotMutation.mutate({ email: resetEmail })}
+                                            disabled={!resetEmail || forgotMutation.isPending}
+                                            className="w-full py-3 rounded-lg text-sm font-bold transition-all duration-150 active:scale-[0.98] disabled:opacity-60"
+                                            style={{ background: '#F0A830', color: '#1A1208', boxShadow: '0 4px 24px rgba(240, 168, 48, 0.25)' }}
+                                        >
+                                            {forgotMutation.isPending ? 'Sending...' : 'Send Reset Code'}
+                                        </button>
+                                    </div>
+                                </>
+                            )}
+
+                            {forgotStep === 'verify' && (
+                                <>
+                                    <h1 className="text-2xl font-bold text-center mb-1" style={{ color: '#F0EEE8' }}>Check your email</h1>
+                                    <p className="text-sm text-center mb-6" style={{ color: '#6B6B72' }}>
+                                        We sent a reset code to <span style={{ color: '#F0A830' }}>{resetEmail}</span>
+                                    </p>
+                                    <div className="flex justify-center gap-3 mb-6" onPaste={handleOtpPaste}>
+                                        {otpValues.map((val, i) => (
+                                            <input key={i} id={`otp-${i}`} type="text" inputMode="numeric" maxLength={1} value={val} onChange={(e) => handleOtpChange(i, e.target.value)} onKeyDown={(e) => handleOtpKeyDown(i, e)} className="text-center text-xl font-bold rounded-lg transition-all focus:outline-none" style={{ width: '46px', height: '56px', background: '#1C1C1F', border: val ? '2px solid #F0A830' : '1px solid #2A2A30', color: '#F0EEE8' }} />
+                                        ))}
+                                    </div>
+                                    {error && (
+                                        <div className="px-4 py-2.5 rounded-lg text-sm text-red-400 mb-4" style={{ background: 'hsl(0 72% 51% / 0.1)', border: '1px solid hsl(0 72% 51% / 0.2)' }}>{error}</div>
+                                    )}
+                                    <button
+                                        onClick={handleForgotVerify}
+                                        disabled={otpValues.join('').length !== 6}
+                                        className="w-full py-3 rounded-lg text-sm font-bold transition-all duration-150 active:scale-[0.98] disabled:opacity-60"
+                                        style={{ background: '#F0A830', color: '#1A1208', boxShadow: '0 4px 24px rgba(240, 168, 48, 0.25)' }}
+                                    >
+                                        Verify Code
+                                    </button>
+                                    <p className="text-xs text-center mt-4" style={{ color: '#4A4A52' }}>
+                                        Didn't receive the code?{' '}
+                                        <button type="button" onClick={handleResendOtp} disabled={resendTimer > 0} style={{ color: resendTimer > 0 ? '#4A4A52' : '#F0A830' }}>
+                                            {resendTimer > 0 ? `Resend in ${resendTimer}s` : 'Resend OTP'}
+                                        </button>
+                                    </p>
+                                </>
+                            )}
+
+                            {forgotStep === 'reset' && (
+                                <form onSubmit={handleSubmit(handleResetPassword)} className="space-y-4">
+                                    <h1 className="text-2xl font-bold text-center mb-1" style={{ color: '#F0EEE8' }}>New password</h1>
+                                    <p className="text-sm text-center mb-7" style={{ color: '#6B6B72' }}>Set a secure password for your account.</p>
+                                    <div className="relative">
+                                        <input {...register('newPassword', { required: 'Password is required' })} type={showPassword ? 'text' : 'password'} placeholder="New password" className={inputCls + ' pr-12'} style={{ background: '#1C1C1F', border: '1px solid #2A2A30', color: '#F0EEE8' }} />
+                                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors" style={{ color: '#4A4A52' }} >
+                                            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                        </button>
+                                    </div>
+                                    <PasswordStrength password={watch('newPassword')} />
+                                    {error && (
+                                        <div className="px-4 py-2.5 rounded-lg text-sm text-red-400" style={{ background: 'hsl(0 72% 51% / 0.1)', border: '1px solid hsl(0 72% 51% / 0.2)' }}>{error}</div>
+                                    )}
+                                    <button
+                                        type="submit"
+                                        disabled={!isPasswordValid || resetPasswordMutation.isPending}
+                                        className="w-full py-3 rounded-lg text-sm font-bold transition-all duration-150 active:scale-[0.98] disabled:opacity-60"
+                                        style={{ background: '#F0A830', color: '#1A1208', boxShadow: '0 4px 24px rgba(240, 168, 48, 0.25)' }}
+                                    >
+                                        {resetPasswordMutation.isPending ? 'Updating...' : 'Update Password'}
+                                    </button>
+                                </form>
+                            )}
+                        </div>
+                    ) : (
+                        <>
                     {/* ── OTP Step ── */}
                     {otpStep ? (
                         <div>
@@ -520,7 +675,12 @@ function AuthPage() {
 
                             {tab === 'signin' && (
                                 <div className="text-right">
-                                    <button type="button" className="text-xs transition-colors" style={{ color: '#6B6B72' }}>
+                                    <button 
+                                        type="button" 
+                                        onClick={handleStartForgot}
+                                        className="text-xs transition-colors hover:text-[var(--primary-accent)]" 
+                                        style={{ color: '#6B6B72' }}
+                                    >
                                         Forgot password?
                                     </button>
                                 </div>
@@ -582,6 +742,8 @@ function AuthPage() {
                             </Link>.
                         </p>
                         </>
+                    )}
+                    </>
                     )}
                 </div>
             </div>
