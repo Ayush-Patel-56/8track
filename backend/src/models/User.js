@@ -10,6 +10,18 @@ const UserSchema = new mongoose.Schema(
         institution: { type: String, trim: true },
         branch: { type: String, trim: true },
         semester: { type: String, trim: true },
+        dob: { 
+            type: Date,
+            validate: {
+                validator: function(v) {
+                    return !v || v <= new Date();
+                },
+                message: 'Date of Birth cannot be in the future'
+            }
+        },
+        phone: { type: String, trim: true },
+        avatarStyle: { type: String, default: 'avataaars' },
+        avatarSeed: { type: String },
         pushSubscription: { type: Object },
         refreshToken: { type: String },
         googleTokens: {

@@ -6,7 +6,8 @@ import {
     Trash2, Check, Clock, Info, 
     AlertTriangle, XCircle, CheckCircle, 
     Flame, Calendar, MoreHorizontal,
-    Search, Filter, CheckCheck, FileText, Scale
+    Search, Filter, CheckCheck, FileText, Scale,
+    Edit2, Save, X, RefreshCw
 } from 'lucide-react';
 import { format, formatDistanceToNow, isToday, isYesterday } from 'date-fns';
 import api from '../lib/api';
@@ -25,6 +26,16 @@ const TYPE_ICONS = {
 
 import { useAuthStore } from '../store/authStore';
 
+const AVATAR_STYLES = [
+    { id: 'avataaars', name: 'People' },
+    { id: 'bottts', name: 'Robots' },
+    { id: 'pixel-art', name: 'Pixel Art' },
+    { id: 'lorelei', name: 'Faces' },
+    { id: 'adventurer', name: 'Characters' },
+    { id: 'miniavs', name: 'Minimal' },
+    { id: 'big-ears', name: 'Fun' }
+];
+
 export default function SettingsPage() {
     const user = useAuthStore((s) => s.user);
     const updateUser = useAuthStore((s) => s.updateUser);
@@ -34,6 +45,46 @@ export default function SettingsPage() {
     const { showToast } = useToast();
     const [searchQuery, setSearchQuery] = useState('');
     const [filter, setFilter] = useState('all'); // all, read, unread
+    
+    // Profile Edit States
+    const [isEditing, setIsEditing] = useState(false);
+    const [formData, setFormData] = useState({
+        name: user?.name || '',
+        institution: user?.institution || '',
+        dob: user?.dob ? format(new Date(user.dob), 'yyyy-MM-dd') : '',
+        phone: user?.phone || '',
+        semester: user?.semester || '',
+        avatarStyle: user?.avatarStyle || 'avataaars',
+        avatarSeed: user?.avatarSeed || user?.name || 'User'
+    });
+
+    const handleRandomizeAvatar = () => {
+        const randomSeed = Math.random().toString(36).substring(7);
+        setFormData(prev => ({ ...prev, avatarSeed: randomSeed }));
+    };
+
+    const updateProfileMutation = useMutation({
+        mutationFn: (data) => api.put('/auth/profile', data),
+        onSuccess: (res) => {
+            updateUser(res.data.user);
+            setIsEditing(false);
+            showToast('Profile updated successfully', 'success');
+        },
+        onError: (err) => {
+            showToast(err.response?.data?.message || 'Failed to update profile', 'error');
+        }
+    });
+
+    const handleProfileSubmit = (e) => {
+        e.preventDefault();
+        
+        // Frontend validation for DOB
+        if (formData.dob && new Date(formData.dob) > new Date()) {
+            return showToast('Date of Birth cannot be in the future', 'error');
+        }
+
+        updateProfileMutation.mutate(formData);
+    };
 
     const urlBase64ToUint8Array = (base64String) => {
         const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -314,26 +365,202 @@ export default function SettingsPage() {
                     )}
 
                     {activeTab === 'profile' && (
-                        <div className="p-10 flex flex-col items-center justify-center text-center space-y-6">
-                            <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-[var(--primary-accent)] shadow-2xl">
-                                 <img 
-                                    src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.name || 'User'}`} 
-                                    alt="Avatar" 
-                                    className="w-full h-full object-cover"
-                                />
-                            </div>
-                            <div className="space-y-1">
-                                <h3 className="text-2xl font-black text-white">{user?.name}</h3>
-                                <p className="text-[var(--text-muted)] font-medium">{user?.email}</p>
-                            </div>
-                            <div className="w-full max-w-md pt-6 space-y-4">
-                                <div className="p-5 rounded-[24px] bg-[rgba(255,255,255,0.02)] border border-white/5 text-left">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] mb-2">Member Since</p>
-                                    <p className="text-sm font-bold text-white">{format(new Date(), 'MMMM yyyy')}</p>
+                        <div className="p-10 space-y-8">
+                            <div className="flex flex-col items-center justify-center text-center space-y-6">
+                                <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-[var(--primary-accent)] shadow-2xl relative group">
+                                     <img 
+                                        src={`https://api.dicebear.com/7.x/${isEditing ? formData.avatarStyle : (user?.avatarStyle || 'avataaars')}/svg?seed=${isEditing ? formData.avatarSeed : (user?.avatarSeed || user?.name || 'User')}`} 
+                                        alt="Avatar" 
+                                        className="w-full h-full object-cover"
+                                    />
+                                    {isEditing && (
+                                         <button 
+                                             type="button"
+                                             onClick={handleRandomizeAvatar}
+                                             className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                             title="Randomize Avatar"
+                                         >
+                                             <RefreshCw className="w-8 h-8 text-white animate-in spin-in-180 duration-500" />
+                                         </button>
+                                    )}
                                 </div>
-                                <button disabled className="w-full py-4 rounded-xl bg-[var(--active-highlight)] text-[var(--text-muted)] font-bold opacity-50 cursor-not-allowed">
-                                    Update Profile (Coming Soon)
-                                </button>
+                                <div className="space-y-1">
+                                    <h3 className="text-2xl font-black text-white">{user?.name}</h3>
+                                    <p className="text-[var(--text-muted)] font-medium">{user?.email}</p>
+                                </div>
+                            </div>
+
+                            <div className="max-w-xl mx-auto w-full">
+                                {!isEditing ? (
+                                    <div className="space-y-6">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="p-6 rounded-3xl bg-[rgba(255,255,255,0.02)] border border-white/5 space-y-1">
+                                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)]">Full Name</p>
+                                                <p className="text-sm font-bold text-white">{user?.name || 'Not set'}</p>
+                                            </div>
+                                            <div className="p-6 rounded-3xl bg-[rgba(255,255,255,0.02)] border border-white/5 space-y-1">
+                                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)]">Institution</p>
+                                                <p className="text-sm font-bold text-white">{user?.institution || 'Not set'}</p>
+                                            </div>
+                                            <div className="p-6 rounded-3xl bg-[rgba(255,255,255,0.02)] border border-white/5 space-y-1">
+                                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)]">Date of Birth</p>
+                                                <p className="text-sm font-bold text-white">
+                                                    {user?.dob ? format(new Date(user.dob), 'dd MMMM yyyy') : 'Not set'}
+                                                </p>
+                                            </div>
+                                            <div className="p-6 rounded-3xl bg-[rgba(255,255,255,0.02)] border border-white/5 space-y-1">
+                                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)]">Phone Number</p>
+                                                <p className="text-sm font-bold text-white">{user?.phone || 'Not set'}</p>
+                                            </div>
+                                            <div className="p-6 rounded-3xl bg-[rgba(255,255,255,0.02)] border border-white/5 space-y-1">
+                                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)]">Standard / Semester</p>
+                                                <p className="text-sm font-bold text-white">{user?.semester || 'Not set'}</p>
+                                            </div>
+                                            <div className="p-6 rounded-3xl bg-[rgba(255,255,255,0.02)] border border-white/5 space-y-1">
+                                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)]">Member Since</p>
+                                                <p className="text-sm font-bold text-white">
+                                                    {user?.createdAt ? format(new Date(user.createdAt), 'MMMM yyyy') : 'Recently'}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <button 
+                                            onClick={() => {
+                                                setFormData({
+                                                    name: user?.name || '',
+                                                    institution: user?.institution || '',
+                                                    dob: user?.dob ? format(new Date(user.dob), 'yyyy-MM-dd') : '',
+                                                    phone: user?.phone || '',
+                                                    semester: user?.semester || '',
+                                                    avatarStyle: user?.avatarStyle || 'avataaars',
+                                                    avatarSeed: user?.avatarSeed || user?.name || 'User'
+                                                });
+                                                setIsEditing(true);
+                                            }}
+                                            className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl bg-[var(--active-highlight)] hover:bg-[var(--primary-accent)] hover:text-[var(--sidebar-bg)] text-white font-bold transition-all group"
+                                        >
+                                            <Edit2 className="w-4 h-4 transition-transform group-hover:scale-110" />
+                                            Edit Profile
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <form onSubmit={handleProfileSubmit} className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                        {/* Avatar Customizer */}
+                                        <div className="p-6 rounded-[32px] bg-[rgba(255,255,255,0.02)] border border-white/5 space-y-6">
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <h4 className="text-sm font-bold text-white">Customize Avatar</h4>
+                                                    <p className="text-[11px] font-medium text-[var(--text-muted)]">Choose a style and shuffle for a unique look</p>
+                                                </div>
+                                                <button 
+                                                    type="button"
+                                                    onClick={handleRandomizeAvatar}
+                                                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--active-highlight)] text-white text-[11px] font-bold hover:bg-[var(--primary-accent)] hover:text-[var(--sidebar-bg)] transition-all group"
+                                                >
+                                                    <RefreshCw className="w-3.5 h-3.5 group-active:rotate-180 transition-transform duration-500" />
+                                                    Shuffle
+                                                </button>
+                                            </div>
+
+                                            <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
+                                                {AVATAR_STYLES.map(style => (
+                                                    <button 
+                                                        key={style.id}
+                                                        type="button"
+                                                        onClick={() => setFormData(prev => ({ ...prev, avatarStyle: style.id }))}
+                                                        className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all hover:scale-105 ${formData.avatarStyle === style.id ? 'border-[var(--primary-accent)] bg-[var(--active-highlight)] shadow-lg shadow-[var(--primary-accent)]/10' : 'border-white/5 bg-black/20 opacity-60 hover:opacity-100'}`}
+                                                        title={style.name}
+                                                    >
+                                                        <img 
+                                                            src={`https://api.dicebear.com/7.x/${style.id}/svg?seed=${formData.avatarSeed}`} 
+                                                            alt={style.name}
+                                                            className="w-full h-full object-cover"
+                                                        />
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-4">
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] ml-1">Full Name</label>
+                                                <input 
+                                                    type="text"
+                                                    value={formData.name}
+                                                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                                                    className="w-full px-6 py-4 rounded-2xl bg-[rgba(255,255,255,0.03)] border border-white/5 text-white font-bold focus:outline-none focus:border-[var(--primary-accent)] transition-all"
+                                                    placeholder="Enter your name"
+                                                    required
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] ml-1">Institution</label>
+                                                <input 
+                                                    type="text"
+                                                    value={formData.institution}
+                                                    onChange={(e) => setFormData({...formData, institution: e.target.value})}
+                                                    className="w-full px-6 py-4 rounded-2xl bg-[rgba(255,255,255,0.03)] border border-white/5 text-white font-bold focus:outline-none focus:border-[var(--primary-accent)] transition-all"
+                                                    placeholder="Enter your college/university"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] ml-1">Date of Birth</label>
+                                                <input 
+                                                    type="date"
+                                                    value={formData.dob}
+                                                    onChange={(e) => setFormData({...formData, dob: e.target.value})}
+                                                    max={new Date().toISOString().split('T')[0]}
+                                                    className="w-full px-6 py-4 rounded-2xl bg-[rgba(255,255,255,0.03)] border border-white/5 text-white font-bold focus:outline-none focus:border-[var(--primary-accent)] transition-all [color-scheme:dark]"
+                                                />
+                                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] ml-1">Phone Number</label>
+                                                    <input 
+                                                        type="tel"
+                                                        value={formData.phone}
+                                                        onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                                                        className="w-full px-6 py-4 rounded-2xl bg-[rgba(255,255,255,0.03)] border border-white/5 text-white font-bold focus:outline-none focus:border-[var(--primary-accent)] transition-all"
+                                                        placeholder="Enter phone number"
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] ml-1">Standard / Semester</label>
+                                                    <input 
+                                                        type="text"
+                                                        value={formData.semester}
+                                                        onChange={(e) => setFormData({...formData, semester: e.target.value})}
+                                                        className="w-full px-6 py-4 rounded-2xl bg-[rgba(255,255,255,0.03)] border border-white/5 text-white font-bold focus:outline-none focus:border-[var(--primary-accent)] transition-all"
+                                                        placeholder="e.g. 6th Semester, 10th Standard"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex gap-4 pt-2">
+                                            <button 
+                                                type="button"
+                                                onClick={() => setIsEditing(false)}
+                                                className="flex-1 py-4 rounded-2xl border border-white/5 text-[var(--text-muted)] font-bold hover:bg-white/5 transition-all"
+                                            >
+                                                Cancel
+                                            </button>
+                                            <button 
+                                                type="submit"
+                                                disabled={updateProfileMutation.isPending}
+                                                className="flex-[2] flex items-center justify-center gap-2 py-4 rounded-2xl bg-[var(--primary-accent)] text-[var(--sidebar-bg)] font-black uppercase tracking-widest hover:opacity-90 transition-all disabled:opacity-50"
+                                            >
+                                                {updateProfileMutation.isPending ? (
+                                                    <Clock className="w-4 h-4 animate-spin" />
+                                                ) : (
+                                                    <>
+                                                        <Save className="w-4 h-4" />
+                                                        Save Changes
+                                                    </>
+                                                )}
+                                            </button>
+                                        </div>
+                                    </form>
+                                )}
                             </div>
                         </div>
                     )}
