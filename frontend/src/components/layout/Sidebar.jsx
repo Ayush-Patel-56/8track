@@ -1,12 +1,15 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { format } from 'date-fns';
 import {
     LayoutDashboard, CalendarCheck, ClipboardList,
-    GraduationCap, TrendingUp, Timer, BookOpen, Zap, LogOut, Settings
+    GraduationCap, TrendingUp, Timer, BookOpen, Zap, LogOut, Settings,
+    Loader2
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import api from '../../lib/api';
+import { useToast } from '../common/Toast';
 
 const NAV_ITEMS = [
     { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -35,10 +38,65 @@ export default function Sidebar() {
         };
     }, []);
 
+    const queryClient = useQueryClient();
+    const { showToast } = useToast();
+
     const logoutMutation = useMutation({
         mutationFn: () => api.post('/auth/logout'),
         onSettled: () => { logout(); navigate('/auth'); },
     });
+
+    // ── Queries ──
+    const { data: scheduleData } = useQuery({
+        queryKey: ['schedule'],
+        queryFn: () => api.get('/schedule').then(r => r.data.schedule),
+    });
+
+    const { data: subjects = [] } = useQuery({
+        queryKey: ['subjects'],
+        queryFn: () => api.get('/subjects').then(r => r.data.subjects || r.data),
+    });
+
+    // ── Quick Mark Logic ──
+    const currentClass = React.useMemo(() => {
+        if (!scheduleData || !subjects.length) return null;
+        
+        const now = new Date();
+        const currentDayName = format(now, 'EEEE');
+        const nowHHMM = format(now, 'HH:mm');
+        
+        const todaysSchedule = scheduleData.find(d => d.day === currentDayName);
+        if (!todaysSchedule || todaysSchedule.isHoliday || !todaysSchedule.slots?.length) return null;
+
+        const slot = todaysSchedule.slots.find(s => nowHHMM >= s.startTime && nowHHMM <= s.endTime);
+        if (!slot) return null;
+
+        const subject = subjects.find(sub => 
+            sub.name.toLowerCase().trim() === slot.subjectName.toLowerCase().trim()
+        );
+
+        return subject ? { ...slot, subjectId: subject._id } : null;
+    }, [scheduleData, subjects]);
+
+    const markMutation = useMutation({
+        mutationFn: (data) => api.post('/attendance/mark', data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['subjects'] });
+            queryClient.invalidateQueries({ queryKey: ['global-attendance'] });
+            showToast(`Marked ${currentClass?.subjectName} as Present!`, 'success');
+        },
+        onError: (err) => showToast(err.response?.data?.message || 'Failed to mark attendance', 'error'),
+    });
+
+    const handleQuickMark = () => {
+        if (!currentClass) return;
+        markMutation.mutate({
+            subjectId: currentClass.subjectId,
+            status: 'present',
+            startTime: currentClass.startTime,
+            date: new Date().toISOString()
+        });
+    };
 
     return (
         <aside className="flex flex-col justify-between w-[200px] min-h-screen py-6 px-4 flex-shrink-0 dot-matrix"
@@ -97,11 +155,23 @@ export default function Sidebar() {
             {/* Bottom Actions */}
             <div className="space-y-4">
                 <button
-                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all hover:opacity-90 active:scale-[0.98] border border-[var(--primary-accent)]"
+                    onClick={handleQuickMark}
+                    disabled={!currentClass || markMutation.isPending}
+                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all hover:opacity-90 active:scale-[0.98] border border-[var(--primary-accent)] disabled:opacity-30 disabled:grayscale disabled:cursor-not-allowed group overflow-hidden relative"
                     style={{ color: 'var(--primary-accent)' }}
+                    title={currentClass ? `Mark ${currentClass.subjectName} as Present` : 'No class currently in progress'}
                 >
-                    <Zap className="w-4 h-4 fill-[var(--primary-accent)]" />
-                    Quick Mark
+                    {markMutation.isPending ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                        <>
+                            <Zap className={`w-4 h-4 ${currentClass ? 'fill-[var(--primary-accent)] animate-pulse' : ''}`} />
+                            Quick Mark
+                        </>
+                    )}
+                    {currentClass && (
+                        <div className="absolute inset-0 bg-[var(--primary-accent)] opacity-0 group-hover:opacity-5 transition-opacity" />
+                    )}
                 </button>
 
                 <div className="flex items-center justify-between px-2">
