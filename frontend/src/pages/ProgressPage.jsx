@@ -214,8 +214,8 @@ function StudyPatternChart({ history }) {
                     const height = (count / max) * 100;
                     const isWeekend = d === 'SAT' || d === 'SUN';
                     return (
-                        <div key={d} className="flex flex-col items-center gap-4 flex-1">
-                            <div className="w-full flex justify-center">
+                        <div key={d} className="flex flex-col items-center gap-4 flex-1 h-full">
+                            <div className="w-full flex-1 flex items-end justify-center">
                                 <div 
                                     className="w-12 rounded-lg transition-all duration-700 relative group overflow-hidden"
                                     style={{ 
@@ -457,7 +457,46 @@ export default function ProgressPage() {
 
         // Subject Breakdown Table
         doc.setFont("helvetica", "bold");
-        doc.text("SUBJECT-WISE PERFORMANCE", 20, doc.lastAutoTable?.finalY + 15 || 180);
+        doc.text("WEEKLY STUDY PATTERN", 20, doc.lastAutoTable?.finalY + 15 || 180);
+        
+        const graphStartY = doc.lastAutoTable?.finalY + 25 || 190;
+        const chartHeight = 40;
+        const barWidth = 15;
+        const gap = 8;
+        
+        const daysShort = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
+        const dayCounts = attendanceHistory.reduce((acc, h) => {
+            if (h.status !== 'present') return acc;
+            const d = new Date(h.date).getDay();
+            const normalized = (d + 6) % 7;
+            acc[normalized] = (acc[normalized] || 0) + 1;
+            return acc;
+        }, {});
+        const maxVal = Math.max(...Object.values(dayCounts), 1);
+
+        daysShort.forEach((day, i) => {
+            const count = dayCounts[i] || 0;
+            const valHeight = (count / maxVal) * chartHeight;
+            const x = 25 + (i * (barWidth + gap));
+            const y = graphStartY + chartHeight - valHeight;
+            
+            // Draw Bar
+            const isWeekend = day === 'SAT' || day === 'SUN';
+            if (isWeekend) doc.setFillColor(58, 191, 191); // Teal
+            else doc.setFillColor(232, 168, 56); // Gold
+            
+            doc.rect(x, y, barWidth, valHeight, 'F');
+            
+            // Draw Label
+            doc.setFontSize(8);
+            doc.setTextColor(113, 113, 122);
+            doc.text(day, x + (barWidth/2), graphStartY + chartHeight + 5, { align: 'center' });
+        });
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(12);
+        doc.setTextColor(24, 24, 27);
+        doc.text("SUBJECT-WISE PERFORMANCE", 20, graphStartY + chartHeight + 20);
         
         const subjectData = subjects.map(s => {
             const subHistory = attendanceHistory.filter(h => h.subjectId === s._id);
@@ -471,7 +510,7 @@ export default function ProgressPage() {
         });
 
         autoTable(doc, {
-            startY: doc.lastAutoTable?.finalY + 20 || 190,
+            startY: graphStartY + chartHeight + 25,
             head: [['Subject Name', 'Attendance %', 'Current Streak', 'Status']],
             body: subjectData,
             theme: 'grid',
