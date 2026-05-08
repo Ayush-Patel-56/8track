@@ -60,4 +60,35 @@ const deleteExam = async (req, res, next) => {
     }
 };
 
-export {  getExams, createExam, deleteExam  };
+const updateExam = async (req, res, next) => {
+    const { examName, subjectId, marksObtained, maxMarks, date, status } = req.body;
+    try {
+        const exam = await Exam.findOne({ _id: req.params.id, userId: req.user.id });
+        if (!exam) return res.status(404).json({ message: 'Exam not found' });
+
+        if (examName) exam.examName = examName;
+        if (subjectId) exam.subjectId = subjectId;
+        if (date) exam.date = date;
+        if (status) exam.status = status;
+
+        const isCompleted = (status || exam.status) === 'completed';
+        if (isCompleted) {
+            if (marksObtained !== undefined) exam.marksObtained = marksObtained;
+            if (maxMarks !== undefined) exam.maxMarks = maxMarks;
+
+            if (exam.marksObtained > exam.maxMarks) {
+                return res.status(400).json({ message: 'Obtained marks cannot be greater than maximum marks' });
+            }
+        } else {
+            exam.marksObtained = undefined;
+            exam.maxMarks = undefined;
+        }
+
+        await exam.save();
+        res.json({ exam });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export {  getExams, createExam, deleteExam, updateExam  };

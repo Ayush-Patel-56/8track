@@ -377,7 +377,7 @@ export default function DashboardPage() {
 
     // Find Next Exam from Exams collection
     const nextExamRecord = [...exams]
-        .filter(e => e.status === 'upcoming' && e.date && isFuture(new Date(e.date)))
+        .filter(e => e.status === 'upcoming' && e.date && (isFuture(new Date(e.date)) || isToday(new Date(e.date))))
         .sort((a, b) => new Date(a.date) - new Date(b.date))[0];
 
     // Fallback to assignments if no upcoming exams record found

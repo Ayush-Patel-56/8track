@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { GraduationCap, Plus, Trash2, X, Award } from 'lucide-react';
+import { GraduationCap, Plus, Trash2, X, Award, Edit2 } from 'lucide-react';
 import { format } from 'date-fns';
 import api from '../lib/api';
 import { useToast } from '../components/common/Toast';
@@ -9,6 +9,7 @@ export default function ExamsPage() {
     const queryClient = useQueryClient();
     const { showToast } = useToast();
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [editingExam, setEditingExam] = useState(null);
 
     const [pendingExams, setPendingExams] = useState(() => {
         try {
@@ -93,6 +94,15 @@ export default function ExamsPage() {
     });
 
     // ── Mutations ──
+    const updateMutation = useMutation({
+        mutationFn: ({ id, data }) => api.put(`/exams/${id}`, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['exams'] });
+            closeModal();
+        },
+        onError: (err) => showToast(err.response?.data?.message || 'Failed to update exam', 'error'),
+    });
+
     const createMutation = useMutation({
         mutationFn: (data) => api.post('/exams', data),
         onSuccess: () => {
@@ -112,6 +122,7 @@ export default function ExamsPage() {
 
     // ── Handlers ──
     const openModal = () => {
+        setEditingExam(null);
         setFormData({ 
             examName: '', 
             subjectId: subjects[0]?._id || '', 
@@ -123,8 +134,22 @@ export default function ExamsPage() {
         setIsAddModalOpen(true);
     };
 
+    const handleEdit = (exam) => {
+        setEditingExam(exam);
+        setFormData({
+            examName: exam.examName,
+            subjectId: exam.subjectId?._id || exam.subjectId || '',
+            marksObtained: exam.marksObtained || '',
+            maxMarks: exam.maxMarks || '',
+            status: exam.status,
+            date: new Date(exam.date).toISOString().slice(0, 16)
+        });
+        setIsAddModalOpen(true);
+    };
+
     const closeModal = () => {
         setIsAddModalOpen(false);
+        setEditingExam(null);
     };
 
     const handleSubmit = (e) => {
@@ -150,6 +175,10 @@ export default function ExamsPage() {
                 date: formData.date
             };
         } else {
+            if (new Date(formData.date) < new Date()) {
+                showToast('Upcoming exams must be scheduled for a future date. Use "Completed" to log past results.', 'error');
+                return;
+            }
             payload = {
                 examName: formData.examName,
                 subjectId: formData.subjectId,
@@ -174,7 +203,11 @@ export default function ExamsPage() {
             return;
         }
 
-        createMutation.mutate(payload);
+        if (editingExam) {
+            updateMutation.mutate({ id: editingExam._id, data: payload });
+        } else {
+            createMutation.mutate(payload);
+        }
     };
 
     // ── Group Exams by Exam Name ──
@@ -320,16 +353,26 @@ export default function ExamsPage() {
                                                     )}
                                                 </td>
                                                 <td className="px-5 py-3.5 text-right">
-                                                    <button
-                                                        onClick={() => {
-                                                            if (window.confirm('Delete this exam record?')) {
-                                                                deleteMutation.mutate(record._id);
-                                                            }
-                                                        }}
-                                                        className="p-1.5 rounded opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500/20 text-red-500"
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </button>
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        <button
+                                                            onClick={() => handleEdit(record)}
+                                                            className="p-1.5 rounded transition-all hover:bg-white/10 text-[var(--text-muted)] hover:text-[var(--primary-accent)]"
+                                                            title="Edit Record"
+                                                        >
+                                                            <Edit2 className="w-4 h-4" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => {
+                                                                if (window.confirm('Delete this exam record?')) {
+                                                                    deleteMutation.mutate(record._id);
+                                                                }
+                                                            }}
+                                                            className="p-1.5 rounded transition-all hover:bg-red-500/20 text-red-500"
+                                                            title="Delete Record"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))}
@@ -349,7 +392,7 @@ export default function ExamsPage() {
                         
                         <div className="flex items-center justify-between p-5 border-b" style={{ borderColor: 'hsl(240 6% 15%)' }}>
                             <h3 className="text-lg font-bold text-white">
-                                {formData.status === 'upcoming' ? 'Schedule Upcoming Exam' : 'Log Exam Result'}
+                                {editingExam ? 'Edit Exam Record' : (formData.status === 'upcoming' ? 'Schedule Upcoming Exam' : 'Log Exam Result')}
                             </h3>
                             <button onClick={closeModal} className="p-1 rounded-lg hover:bg-white/5 transition-colors">
                                 <X className="w-5 h-5" style={{ color: 'hsl(240 5% 50%)' }} />
@@ -480,7 +523,7 @@ export default function ExamsPage() {
                                     className="flex-1 py-3 rounded-xl text-sm font-black transition-all active:scale-95 disabled:opacity-50"
                                     style={{ background: 'hsl(43 96% 56%)', color: 'hsl(240 5.9% 10%)' }}
                                 >
-                                    {createMutation.isPending ? 'Processing...' : (!navigator.onLine ? 'Queue Result' : (formData.status === 'upcoming' ? 'Schedule Exam' : 'Save Result'))}
+                                    {createMutation.isPending || updateMutation.isPending ? 'Processing...' : (!navigator.onLine ? 'Queue Result' : (editingExam ? 'Update Record' : (formData.status === 'upcoming' ? 'Schedule Exam' : 'Save Result')))}
                                 </button>
                             </div>
                         </form>
