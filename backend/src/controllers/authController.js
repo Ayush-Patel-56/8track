@@ -15,14 +15,16 @@ const generateRefreshToken = (id) =>
         expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
     });
 
-const setRefreshCookie = (res, token) => {
-    const isProd = process.env.NODE_ENV === 'production';
+const setRefreshCookie = (res, token, req) => {
+    // Detect HTTPS from the request rather than NODE_ENV, which is often not set
+    // correctly in cloud deployments (Railway, Render, etc. use reverse proxies).
+    const isHttps = req
+        ? (req.secure || req.headers['x-forwarded-proto'] === 'https')
+        : process.env.NODE_ENV === 'production';
     res.cookie('refreshToken', token, {
         httpOnly: true,
-        secure: isProd,
-        // 'none' allows the cookie to be sent on cross-origin XHR (requires secure:true).
-        // 'lax' is used in dev where secure is false.
-        sameSite: isProd ? 'none' : 'lax',
+        secure: isHttps,
+        sameSite: isHttps ? 'none' : 'lax',
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 };
@@ -53,7 +55,7 @@ const register = async (req, res, next) => {
         user.refreshToken = newRefreshToken;
         await user.save();
 
-        setRefreshCookie(res, newRefreshToken);
+        setRefreshCookie(res, newRefreshToken, req);
 
         return res.status(201).json({
             accessToken,
@@ -100,7 +102,7 @@ const login = async (req, res, next) => {
         user.refreshToken = newRefreshToken;
         await user.save();
 
-        setRefreshCookie(res, newRefreshToken);
+        setRefreshCookie(res, newRefreshToken, req);
 
         return res.json({
             accessToken,
@@ -143,7 +145,7 @@ const refreshToken = async (req, res, next) => {
         user.refreshToken = newRefreshToken;
         await user.save();
 
-        setRefreshCookie(res, newRefreshToken);
+        setRefreshCookie(res, newRefreshToken, req);
 
         return res.json({
             accessToken: newAccessToken,
@@ -290,7 +292,7 @@ const verifyOtpAndRegister = async (req, res, next) => {
         user.refreshToken = newRefreshToken;
         await user.save();
 
-        setRefreshCookie(res, newRefreshToken);
+        setRefreshCookie(res, newRefreshToken, req);
 
         // Cleanup the OTP record
         await Otp.deleteOne({ email });
@@ -453,7 +455,7 @@ const googleCallback = async (req, res, next) => {
         user.refreshToken = newRefreshToken;
         await user.save();
 
-        setRefreshCookie(res, newRefreshToken);
+        setRefreshCookie(res, newRefreshToken, req);
 
         // Redirect to frontend callback page with access token in query
         const userPayload = encodeURIComponent(JSON.stringify({
