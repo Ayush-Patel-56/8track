@@ -39,7 +39,10 @@ function useBootSession() {
     axios
       .post(REFRESH_URL, {}, { withCredentials: true })
       .then(({ data }) => setAuth(data.user, data.accessToken))
-      .catch(() => logout())
+      .catch(() => {
+        // Don't logout if user authenticated via the login form while this was in-flight
+        if (!useAuthStore.getState().accessToken) logout();
+      })
       .finally(() => setSessionReady(true));
   }, [_hasHydrated]); // eslint-disable-line react-hooks/exhaustive-deps
 
