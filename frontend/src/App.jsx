@@ -23,29 +23,24 @@ const queryClient = new QueryClient({
 
 const REFRESH_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/auth/refresh`;
 
-// On every page load, accessToken is lost from memory. If we have a persisted
-// session (isAuthenticated=true), proactively restore it via the refreshToken
-// cookie before rendering protected routes — avoids a logout on every refresh.
+// On every page load, accessToken is lost from memory. Always attempt a silent
+// refresh via the refreshToken cookie before rendering protected routes.
+// We do NOT gate this on isAuthenticated — a prior failed refresh sets
+// isAuthenticated:false in localStorage, which would prevent future attempts.
 function useBootSession() {
   const _hasHydrated = useAuthStore((s) => s._hasHydrated);
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  const accessToken = useAuthStore((s) => s.accessToken);
-  const setAccessToken = useAuthStore((s) => s.setAccessToken);
+  const setAuth = useAuthStore((s) => s.setAuth);
   const logout = useAuthStore((s) => s.logout);
   const [sessionReady, setSessionReady] = useState(false);
 
   useEffect(() => {
     if (!_hasHydrated) return;
 
-    if (isAuthenticated && !accessToken) {
-      axios
-        .post(REFRESH_URL, {}, { withCredentials: true })
-        .then(({ data }) => setAccessToken(data.accessToken))
-        .catch(() => logout())
-        .finally(() => setSessionReady(true));
-    } else {
-      setSessionReady(true);
-    }
+    axios
+      .post(REFRESH_URL, {}, { withCredentials: true })
+      .then(({ data }) => setAuth(data.user, data.accessToken))
+      .catch(() => logout())
+      .finally(() => setSessionReady(true));
   }, [_hasHydrated]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return sessionReady;

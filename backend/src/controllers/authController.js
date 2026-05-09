@@ -145,7 +145,21 @@ const refreshToken = async (req, res, next) => {
 
         setRefreshCookie(res, newRefreshToken);
 
-        return res.json({ accessToken: newAccessToken });
+        return res.json({
+            accessToken: newAccessToken,
+            user: {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                institution: user.institution,
+                branch: user.branch,
+                semester: user.semester,
+                dob: user.dob,
+                phone: user.phone,
+                avatarStyle: user.avatarStyle,
+                avatarSeed: user.avatarSeed,
+            },
+        });
     } catch {
         return res.status(403).json({ message: 'Refresh token expired or invalid' });
     }
