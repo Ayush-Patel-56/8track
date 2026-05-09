@@ -16,10 +16,13 @@ const generateRefreshToken = (id) =>
     });
 
 const setRefreshCookie = (res, token) => {
+    const isProd = process.env.NODE_ENV === 'production';
     res.cookie('refreshToken', token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
+        secure: isProd,
+        // 'none' allows the cookie to be sent on cross-origin XHR (requires secure:true).
+        // 'lax' is used in dev where secure is false.
+        sameSite: isProd ? 'none' : 'lax',
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 };
