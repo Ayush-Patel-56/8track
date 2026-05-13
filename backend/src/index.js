@@ -85,7 +85,7 @@ mongoose
     serverSelectionTimeoutMS: 60000,
   })
   .then(() => {
-    console.log(' Connected to MongoDB Atlas');
+    console.log(' Connected to MongoDB Atlas:', mongoose.connection.name);
   })
   .catch((err) => {
     console.error(' MongoDB connection error:', err.message);

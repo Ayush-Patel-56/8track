@@ -1,4 +1,6 @@
+import mongoose from 'mongoose';
 import Schedule from '../models/Schedule.js';
+import { clearUserCache } from '../middleware/cache.js';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -13,7 +15,7 @@ function getMondayOfWeek(date = new Date()) {
     const day = d.getDay(); // 0=Sun, 1=Mon, 2=Tue ... 6=Sat
     const diff = day === 0 ? -6 : 1 - day; // rewind to Monday
     d.setDate(d.getDate() + diff);
-    d.setHours(0, 0, 0, 0);
+    d.setUTCHours(0, 0, 0, 0); // Use UTC for absolute consistency
     return d;
 }
 
@@ -55,24 +57,22 @@ function getActiveWeekOf(date = new Date()) {
 // GET /api/schedule – return all 7 days for the active week (create missing days on-the-fly)
 const getSchedule = async (req, res, next) => {
     try {
-        const userId = req.user._id;
+        const userId = new mongoose.Types.ObjectId(req.user._id);
         const weekOf = getActiveWeekOf();
 
         const docs = [];
         for (const day of DAYS) {
-            let doc = await Schedule.findOneAndUpdate(
-                { userId, day, weekOf },
-                { $setOnInsert: { userId, day, weekOf, isHoliday: false, slots: [] } },
-                { upsert: false, new: true }
-            );
+            let doc = await Schedule.findOne({ userId, day, weekOf });
 
             if (!doc) {
                 try {
-                    doc = await Schedule.findOneAndUpdate(
-                        { userId, day, weekOf },
-                        { $setOnInsert: { userId, day, weekOf, isHoliday: false, slots: [] } },
-                        { upsert: true, new: true }
-                    );
+                    doc = await Schedule.create({
+                        userId,
+                        day,
+                        weekOf,
+                        isHoliday: false,
+                        slots: []
+                    });
                 } catch (err) {
                     if (err.code === 11000) {
                         doc = await Schedule.findOne({ userId, day, weekOf });
@@ -94,31 +94,42 @@ const getSchedule = async (req, res, next) => {
 // POST /api/schedule/:day/slots – add a slot to a day (current active week only)
 const addSlot = async (req, res, next) => {
     try {
-        const userId = req.user._id;
+        const userId = new mongoose.Types.ObjectId(req.user._id);
         const { day } = req.params;
         const { subjectName, startTime, endTime, room } = req.body;
-        const weekOf = getActiveWeekOf();
+
+        if (!subjectName || !startTime || !endTime) {
+            return res.status(400).json({ message: 'Subject name, start time and end time are required' });
+        }
 
         if (!DAYS.includes(day)) return res.status(400).json({ message: 'Invalid day' });
-        if (!subjectName || !startTime || !endTime)
-            return res.status(400).json({ message: 'subjectName, startTime and endTime are required' });
+
+        const weekOf = getActiveWeekOf();
+        console.log('[DEBUG addSlot] day =', day, '| weekOf =', weekOf.toISOString(), '| subject =', subjectName);
 
         const filter = { userId, day, weekOf };
         const update = { $push: { slots: { subjectName, startTime, endTime, room: room || '' } } };
 
-        let doc = await Schedule.findOneAndUpdate(filter, update, { new: true });
-
-        if (!doc) {
-            try {
-                doc = await Schedule.findOneAndUpdate(filter, update, { new: true, upsert: true });
-            } catch (err) {
-                if (err.code === 11000) {
-                    doc = await Schedule.findOneAndUpdate(filter, update, { new: true });
-                } else {
-                    throw err;
-                }
+        let doc;
+        try {
+            doc = await Schedule.findOneAndUpdate(filter, update, {
+                new: true,
+                upsert: true,
+                setDefaultsOnInsert: true
+            });
+        } catch (err) {
+            if (err.code === 11000) {
+                doc = await Schedule.findOneAndUpdate(filter, update, { new: true });
+            } else {
+                throw err;
             }
         }
+
+        if (!doc) {
+            return res.status(500).json({ message: 'Failed to update schedule document' });
+        }
+
+        clearUserCache(userId);
         res.status(201).json({ day: doc });
     } catch (err) {
         next(err);
@@ -138,6 +149,8 @@ const deleteSlot = async (req, res, next) => {
             { new: true }
         );
         if (!doc) return res.status(404).json({ message: 'Day not found' });
+
+        clearUserCache(userId);
         res.json({ day: doc });
     } catch (err) {
         next(err);
@@ -147,7 +160,7 @@ const deleteSlot = async (req, res, next) => {
 // PATCH /api/schedule/:day/holiday – toggle holiday flag (current active week only)
 const toggleHoliday = async (req, res, next) => {
     try {
-        const userId = req.user._id;
+        const userId = new mongoose.Types.ObjectId(req.user._id);
         const { day } = req.params;
         const { isHoliday } = req.body;
         const weekOf = getActiveWeekOf();
@@ -155,19 +168,26 @@ const toggleHoliday = async (req, res, next) => {
         const filter = { userId, day, weekOf };
         const update = { isHoliday: !!isHoliday };
 
-        let doc = await Schedule.findOneAndUpdate(filter, update, { new: true });
-
-        if (!doc) {
-            try {
-                doc = await Schedule.findOneAndUpdate(filter, update, { new: true, upsert: true });
-            } catch (err) {
-                if (err.code === 11000) {
-                    doc = await Schedule.findOneAndUpdate(filter, update, { new: true });
-                } else {
-                    throw err;
-                }
+        let doc;
+        try {
+            doc = await Schedule.findOneAndUpdate(filter, update, {
+                new: true,
+                upsert: true,
+                setDefaultsOnInsert: true
+            });
+        } catch (err) {
+            if (err.code === 11000) {
+                doc = await Schedule.findOneAndUpdate(filter, update, { new: true });
+            } else {
+                throw err;
             }
         }
+
+        if (!doc) {
+            return res.status(500).json({ message: 'Failed to update holiday status' });
+        }
+
+        clearUserCache(userId);
         res.json({ day: doc });
     } catch (err) {
         next(err);
@@ -186,7 +206,7 @@ const getScheduleHistory = async (req, res, next) => {
         if (from || to) {
             query.weekOf = {};
             if (from) query.weekOf.$gte = new Date(from);
-            if (to)   query.weekOf.$lte = new Date(to);
+            if (to) query.weekOf.$lte = new Date(to);
         }
 
         const docs = await Schedule.find(query).lean();

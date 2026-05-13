@@ -120,10 +120,11 @@ const syncSchedule = async (req, res) => {
         oauth2Client.setCredentials(user.googleTokens);
 
         // Auto-refresh tokens when they expire
+        // Google only returns refresh_token on first consent, so we must merge
+        // to preserve it while saving the new access_token + expiry_date
         oauth2Client.on('tokens', async (tokens) => {
-            if (tokens.refresh_token) {
-                await User.findByIdAndUpdate(req.user._id, { googleTokens: tokens });
-            }
+            const updated = { ...user.googleTokens, ...tokens };
+            await User.findByIdAndUpdate(req.user._id, { googleTokens: updated });
         });
 
         const calendar = google.calendar({ version: 'v3', auth: oauth2Client });

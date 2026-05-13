@@ -26,7 +26,8 @@ const errorHandler = (err, req, res, next) => {
     if (err.code === 11000) {
         statusCode = 409;
         const field = Object.keys(err.keyValue || {})[0] || 'field';
-        message = `${field.charAt(0).toUpperCase() + field.slice(1)} already exists`;
+        const value = err.keyValue[field];
+        message = `${field.charAt(0).toUpperCase() + field.slice(1)} conflict: ${value}`;
     }
 
     // ── Mongoose Bad ObjectId ────────────────────────────────────────────────

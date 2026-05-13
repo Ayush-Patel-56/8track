@@ -7,7 +7,7 @@ const router = express.Router();
 router.use(protect);
 
 router.get('/', cacheMiddleware, getSchedule);
-router.get('/history', cacheMiddleware, getScheduleHistory);   // <-- historical schedule docs for heatmap
+router.get('/history', cacheMiddleware, getScheduleHistory);
 router.post('/:day/slots', clearCacheMiddleware, addSlot);
 router.delete('/:day/slots/:slotId', clearCacheMiddleware, deleteSlot);
 router.patch('/:day/holiday', clearCacheMiddleware, toggleHoliday);

@@ -11,7 +11,7 @@ function getMondayOfWeek(date = new Date()) {
     const day = d.getDay();
     const diff = day === 0 ? -6 : 1 - day;
     d.setDate(d.getDate() + diff);
-    d.setHours(0, 0, 0, 0);
+    d.setUTCHours(0, 0, 0, 0);
     return d;
 }
 

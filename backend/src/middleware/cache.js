@@ -36,17 +36,19 @@ export const cacheMiddleware = (req, res, next) => {
  * Invalidation middleware
  * Clears cache for the current user when data is modified
  */
+export const clearUserCache = (userId) => {
+    if (!userId) return;
+    const keys = cache.keys();
+    const idStr = userId.toString();
+    const userKeys = keys.filter(k => k.startsWith(`__cache__${idStr}__`));
+    if (userKeys.length > 0) {
+        cache.del(userKeys);
+    }
+};
+
 export const clearCacheMiddleware = (req, res, next) => {
     const userId = req.user?._id || req.user?.id;
-    
-    if (userId) {
-        // Find all keys for this user and delete them
-        const keys = cache.keys();
-        const userKeys = keys.filter(k => k.startsWith(`__cache__${userId}__`));
-        if (userKeys.length > 0) {
-            cache.del(userKeys);
-        }
-    }
+    clearUserCache(userId);
     next();
 };
 
